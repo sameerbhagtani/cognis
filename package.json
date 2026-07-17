@@ -11,7 +11,13 @@
         "format": "prettier --write .",
         "format:check": "prettier --check .",
         "clean": "turbo clean",
-        "postclean": "rimraf node_modules .turbo"
+        "postclean": "rimraf node_modules .turbo",
+        "db:up": "docker compose up -d",
+        "db:down": "docker compose down",
+        "db:reset": "docker compose down -v && docker compose up -d",
+        "db:generate": "turbo db:generate --filter=@cognis/database",
+        "db:migrate": "turbo db:migrate --filter=@cognis/database",
+        "db:push": "turbo db:push --filter=@cognis/database"
     },
     "devDependencies": {
         "@types/node": "^26.1.1",

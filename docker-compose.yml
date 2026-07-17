@@ -1,0 +1,20 @@
+services:
+    postgres:
+        image: postgres:17
+        container_name: cognis-postgres
+        restart: unless-stopped
+
+        ports:
+            - "5432:5432"
+
+        environment:
+            POSTGRES_USER: user
+            POSTGRES_PASSWORD: password
+            POSTGRES_DB: cognis_db
+
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+
+volumes:
+    postgres_data:
+        name: cognis-postgres-data

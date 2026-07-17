@@ -1,0 +1,8 @@
+{
+    "extends": "@cognis/typescript-config/base.json",
+    "compilerOptions": {
+        "noEmit": true
+    },
+    "include": ["src/**/*", "drizzle.config.ts"],
+    "exclude": ["node_modules", "drizzle"]
+}
