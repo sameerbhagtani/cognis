@@ -1,0 +1,12 @@
+{
+    "extends": "@cognis/typescript-config/node.json",
+    "compilerOptions": {
+        "outDir": "./dist",
+        "rootDir": "./src",
+        "verbatimModuleSyntax": true,
+        "exactOptionalPropertyTypes": true,
+        "sourceMap": true
+    },
+    "include": ["src/**/*"],
+    "exclude": ["node_modules", "dist"]
+}

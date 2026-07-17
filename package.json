@@ -1,0 +1,23 @@
+{
+    "name": "cognis",
+    "private": true,
+    "type": "module",
+    "packageManager": "pnpm@11.13.1",
+    "scripts": {
+        "dev": "turbo dev",
+        "build": "turbo build",
+        "lint": "turbo lint",
+        "typecheck": "turbo typecheck",
+        "format": "prettier --write .",
+        "format:check": "prettier --check .",
+        "clean": "turbo clean",
+        "postclean": "rimraf node_modules .turbo"
+    },
+    "devDependencies": {
+        "@types/node": "^26.1.1",
+        "prettier": "^3.9.5",
+        "rimraf": "^6.1.3",
+        "turbo": "^2.10.5",
+        "typescript": "^7.0.2"
+    }
+}
