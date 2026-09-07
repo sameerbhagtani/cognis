@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+.astro/
+.expo/
+.turbo/
+
+# Environment
+.env*
+!.env.example
+
+# Generated framework files
+expo-env.d.ts
+
+# TypeScript
+*.tsbuildinfo
+
+# Logs
+npm-debug.log*
+yarn-debug.log*
+pnpm-debug.log*
+bun-debug.log*
+
+# OS
+.DS_Store
+Thumbs.db
+Desktop.ini

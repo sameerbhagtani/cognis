@@ -1,0 +1,6 @@
+set -e
+
+pnpm lint
+pnpm check-types
+pnpm format
+git add -u

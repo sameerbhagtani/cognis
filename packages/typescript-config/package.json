@@ -1,0 +1,8 @@
+{
+    "name": "@cognis/typescript-config",
+    "private": true,
+    "type": "module",
+    "files": [
+        "*.json"
+    ]
+}

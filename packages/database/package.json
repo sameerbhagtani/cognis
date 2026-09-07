@@ -1,0 +1,31 @@
+{
+    "name": "@cognis/database",
+    "private": true,
+    "type": "module",
+    "scripts": {
+        "dev": "drizzle-kit studio",
+        "lint": "eslint .",
+        "check-types": "tsc --noEmit",
+        "db:generate": "drizzle-kit generate",
+        "db:migrate": "drizzle-kit migrate",
+        "db:push": "drizzle-kit push"
+    },
+    "exports": {
+        ".": "./src/index.ts"
+    },
+    "dependencies": {
+        "dotenv": "^17.4.2",
+        "drizzle-orm": "1.0.0-rc.4",
+        "pg": "^8.23.0",
+        "zod": "^4.5.4"
+    },
+    "devDependencies": {
+        "@cognis/typescript-config": "workspace:*",
+        "@cognis/eslint-config": "workspace:*",
+        "@types/node": "^26.4.1",
+        "@types/pg": "^8.23.1",
+        "drizzle-kit": "1.0.0-rc.4",
+        "eslint": "^10.10.0",
+        "typescript": "^7.0.2"
+    }
+}
