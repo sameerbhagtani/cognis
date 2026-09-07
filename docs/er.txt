@@ -1,0 +1,72 @@
+user [icon: user, color: green] {
+  id UUID PRIMARY KEY
+  clerkUserId VARCHAR(50) NOT NULL UNIQUE
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+workspace [icon: blocks, color: blue] {
+  id UUID PRIMARY KEY
+  ownerId UUID NOT NULL ON DELETE CASCADE
+
+  name VARCHAR(50) NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+user.id < workspace.ownerId
+
+workspace_member [icon: user, color: blue] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  userId UUID NOT NULL ON DELETE CASCADE
+  // UNIQUE (workspaceId, userId)
+
+  role ENUM('owner', 'editor', 'viewer') NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+workspace.id < workspace_member.workspaceId
+user.id < workspace_member.userId
+
+folder [icon: folder, color: yellow] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  parentFolderId UUID ON DELETE CASCADE
+
+  name VARCHAR(50) NOT NULL
+
+  deletedAt TIMESTAMP
+  deletedBatchId UUID
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+workspace.id < folder.workspaceId
+folder.id < folder.parentFolderId
+
+note [icon: document, color: pink] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  folderId UUID ON DELETE CASCADE
+
+  title VARCHAR(50) NOT NULL
+  content TEXT
+
+  deletedAt TIMESTAMP
+  deletedBatchId UUID
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+workspace.id < note.workspaceId
+folder.id < note.folderId
