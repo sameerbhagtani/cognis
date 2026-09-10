@@ -9,7 +9,6 @@ dist/
 
 # Environment
 .env*
-!.env.example
 
 # Generated framework files
 expo-env.d.ts
