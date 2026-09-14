@@ -1,0 +1,9 @@
+{
+    "extends": "@cognis/typescript-config/node.json",
+    "compilerOptions": {
+        "module": "ESNext",
+        "moduleResolution": "Bundler",
+        "noEmit": true
+    },
+    "include": ["src"]
+}

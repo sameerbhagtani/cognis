@@ -336,6 +336,9 @@ importers:
             "@cognis/eslint-config":
                 specifier: workspace:*
                 version: link:../eslint-config
+            "@cognis/types":
+                specifier: workspace:*
+                version: link:../types
             "@cognis/typescript-config":
                 specifier: workspace:*
                 version: link:../typescript-config
@@ -394,6 +397,21 @@ importers:
             typescript-eslint:
                 specifier: ^8.69.0
                 version: 8.70.0(eslint@10.10.0(supports-color@8.1.1))(supports-color@8.1.1)(typescript@6.0.3)
+
+    packages/types:
+        devDependencies:
+            "@cognis/eslint-config":
+                specifier: workspace:*
+                version: link:../eslint-config
+            "@cognis/typescript-config":
+                specifier: workspace:*
+                version: link:../typescript-config
+            eslint:
+                specifier: ^10.10.0
+                version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
+            typescript:
+                specifier: ^7.0.2
+                version: 7.0.2
 
     packages/typescript-config: {}
 
