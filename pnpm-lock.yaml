@@ -159,6 +159,9 @@ importers:
 
     apps/api:
         dependencies:
+            cookie-parser:
+                specifier: ^1.4.7
+                version: 1.4.7
             cors:
                 specifier: ^2.8.6
                 version: 2.8.6
@@ -181,6 +184,9 @@ importers:
             "@cognis/typescript-config":
                 specifier: workspace:*
                 version: link:../../packages/typescript-config
+            "@types/cookie-parser":
+                specifier: ^1.4.10
+                version: 1.4.10(@types/express@5.0.6)
             "@types/cors":
                 specifier: ^2.8.19
                 version: 2.8.19
@@ -3629,6 +3635,14 @@ packages:
                 integrity: sha512-K6uROf1LD88uDQqJCktA4yzL1YYAK6NgfsI0v/mTgyPKWsX1CnJ0XPSDhViejru1GcRkLWb8RlzFYJRqGUbaug==,
             }
 
+    "@types/cookie-parser@1.4.10":
+        resolution:
+            {
+                integrity: sha512-B4xqkqfZ8Wek+rCOeRxsjMS9OgvzebEzzLYw7NHYuvzb7IdxOkI0ZHGgeEBX4PUM7QGVvNSK60T3OvWj3YfBRg==,
+            }
+        peerDependencies:
+            "@types/express": "*"
+
     "@types/cors@2.8.19":
         resolution:
             {
@@ -5163,6 +5177,19 @@ packages:
         resolution:
             {
                 integrity: sha512-lXVyvUvrNXblMqzIRrxHb57UUVmqsSWlxqt3XIjCkUP0wDAf6uicO6KMbEgYrMNtEvWgWHwe42CKxPu9MYAnWw==,
+            }
+
+    cookie-parser@1.4.7:
+        resolution:
+            {
+                integrity: sha512-nGUvgXnotP3BsjiLX2ypbQnWoGUPIIfHQNZkkC668ntrzGWEZVW70HDEB1qnNGMicPje6EttlIgzo51YSwNQGw==,
+            }
+        engines: { node: ">= 0.8.0" }
+
+    cookie-signature@1.0.6:
+        resolution:
+            {
+                integrity: sha512-QADzlaHc8icV8I7vbaJXJwod9HWYp8uCqf1xa4OfNu1T7JVxQIrUgOWtHdNDtPiywmFbiS12VjotIXLrKM3orQ==,
             }
 
     cookie-signature@1.2.2:
@@ -13326,6 +13353,10 @@ snapshots:
         dependencies:
             "@types/node": 26.4.1
 
+    "@types/cookie-parser@1.4.10(@types/express@5.0.6)":
+        dependencies:
+            "@types/express": 5.0.6
+
     "@types/cors@2.8.19":
         dependencies:
             "@types/node": 26.4.1
@@ -14441,6 +14472,13 @@ snapshots:
     convert-source-map@2.0.0: {}
 
     cookie-es@1.2.3: {}
+
+    cookie-parser@1.4.7:
+        dependencies:
+            cookie: 0.7.2
+            cookie-signature: 1.0.6
+
+    cookie-signature@1.0.6: {}
 
     cookie-signature@1.2.2: {}
 

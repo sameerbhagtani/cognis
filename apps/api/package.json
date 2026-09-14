@@ -10,6 +10,7 @@
         "check-types": "tsc --noEmit"
     },
     "dependencies": {
+        "cookie-parser": "^1.4.7",
         "cors": "^2.8.6",
         "dotenv": "^17.4.2",
         "express": "^5.2.1",
@@ -19,6 +20,7 @@
         "@cognis/database": "workspace:*",
         "@cognis/eslint-config": "workspace:*",
         "@cognis/typescript-config": "workspace:*",
+        "@types/cookie-parser": "^1.4.10",
         "@types/cors": "^2.8.19",
         "@types/express": "^5.0.6",
         "@types/node": "^26.4.1",

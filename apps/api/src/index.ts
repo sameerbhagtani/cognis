@@ -1,22 +1,20 @@
-import "dotenv/config";
-import express from "express";
+import http from "node:http";
 
-import { db } from "@cognis/database";
+import createServerApplication from "./app.js";
 
-const app = express();
+import env from "./shared/config/env.js";
 
-app.get("/api/health", (_req, res) => {
-    return res.json({ message: "Healthy" });
-});
+async function main() {
+    try {
+        const server = http.createServer(createServerApplication());
 
-try {
-    await db.execute("SELECT 1");
-    console.log("✅ Database connected");
-} catch (error) {
-    console.error("Database connection failed:", error);
+        server.listen(env.PORT, () => {
+            console.log(`✅ Server started on PORT: ${env.PORT}`);
+        });
+    } catch (err) {
+        console.error(err);
+        process.exit(1);
+    }
 }
 
-const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => {
-    console.log(`✅ Server started at PORT: ${PORT}`);
-});
+main();
