@@ -1,8 +1,8 @@
 import { Stack } from "expo-router";
 import useTheme from "@/lib/theme/useTheme";
 
-export default function AppLayout() {
-    const { theme, themeMode } = useTheme();
+export default function AuthLayout() {
+    const { theme } = useTheme();
     return (
         <Stack
             initialRouteName="signup"

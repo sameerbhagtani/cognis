@@ -13,6 +13,8 @@ import useTheme from "@/lib/theme/useTheme";
 import type { Theme } from "@cognis/types";
 import type { ThemeMode } from "@/lib/theme/types";
 
+import { handleSignin } from "../api";
+
 export default function Signin() {
     const { theme, themeMode } = useTheme();
     const { width, height } = useWindowDimensions();
@@ -25,9 +27,8 @@ export default function Signin() {
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
-    function handleSignIn() {
-        // TODO: wire up BetterAuth
-        console.log("[Cognis Auth] Sign In:", { email, password });
+    async function handleSubmit() {
+        await handleSignin(email, password);
     }
 
     const isFormValid = email.trim() !== "" && password.trim() !== "";
@@ -101,7 +102,7 @@ export default function Signin() {
 
                     {/* Sign In Button */}
                     <Pressable
-                        onPress={handleSignIn}
+                        onPress={handleSubmit}
                         disabled={!isFormValid}
                         style={({ pressed }) => [
                             styles.button,

@@ -1,7 +1,8 @@
-import useTheme from "@/lib/theme/useTheme";
-import Signin from "@/module/auth/screens/SignIn";
-import { StatusBar } from "expo-status-bar";
 import { KeyboardAvoidingView, Platform } from "react-native";
+import { StatusBar } from "expo-status-bar";
+
+import Signin from "@/modules/auth/screens/Signin";
+import useTheme from "@/lib/theme/useTheme";
 
 export default function SigninRoute() {
     const { themeMode } = useTheme();

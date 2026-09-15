@@ -1,8 +1,16 @@
-import { View, Text } from "react-native";
+import { Text, Pressable } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+
+import { handleSignout } from "@/modules/auth/api";
+
 export default function index() {
     return (
-        <View>
+        <SafeAreaView>
             <Text>This is the main app</Text>
-        </View>
+
+            <Pressable onPress={handleSignout}>
+                <Text>Sign Out</Text>
+            </Pressable>
+        </SafeAreaView>
     );
 }

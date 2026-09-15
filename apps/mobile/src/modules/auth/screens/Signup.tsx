@@ -9,9 +9,12 @@ import {
     useWindowDimensions,
 } from "react-native";
 import { Link } from "expo-router";
+
 import useTheme from "@/lib/theme/useTheme";
 import type { Theme } from "@cognis/types";
 import type { ThemeMode } from "@/lib/theme/types";
+
+import { handleSignup } from "../api";
 
 export default function Signup() {
     const { theme, themeMode } = useTheme();
@@ -26,9 +29,8 @@ export default function Signup() {
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
 
-    function handleSignUp() {
-        // TODO: wire up BetterAuth
-        console.log("[Cognis Auth] Sign Up:", { name, email, password });
+    async function handleSubmit() {
+        await handleSignup(name, email, password);
     }
 
     const isFormValid = name.trim() !== "" && email.trim() !== "" && password.trim() !== "";
@@ -118,7 +120,7 @@ export default function Signup() {
 
                     {/* Sign Up Button */}
                     <Pressable
-                        onPress={handleSignUp}
+                        onPress={handleSubmit}
                         disabled={!isFormValid}
                         style={({ pressed }) => [
                             styles.button,
