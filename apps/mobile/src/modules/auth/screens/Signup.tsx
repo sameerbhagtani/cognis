@@ -46,7 +46,7 @@ export default function Signup() {
         },
     });
 
-    const onSubmit = async (data: SignUpFormData) => {
+    async function onSubmit(data: SignUpFormData) {
         setApiError(null);
         const response = await handleSignup(data.name, data.email, data.password);
         if (response?.error) {
@@ -55,7 +55,7 @@ export default function Signup() {
             // success, proceed to next screen (could be index or a verify email screen)
             router.replace("/");
         }
-    };
+    }
 
     const getBorderColor = (field: string, error?: any) => {
         if (error) return "#EF4444"; // Red for error

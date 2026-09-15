@@ -1,5 +1,5 @@
-import { Stack } from "expo-router";
+import { Drawer } from "expo-router/drawer";
 
-export default function AppLayout() {
-    return <Stack screenOptions={{ headerShown: false }} />;
+export default function Layout() {
+    return <Drawer screenOptions={{ headerShown: false }} />;
 }
