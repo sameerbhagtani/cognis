@@ -4,4 +4,7 @@ export type Theme = {
 
     primary: string;
     secondary: string;
+
+    subtleBorder: string;
+    inputBg: string;
 };

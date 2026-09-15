@@ -7,34 +7,59 @@ import {
     ScrollView,
     StyleSheet,
     useWindowDimensions,
+    ActivityIndicator,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
+
+import { useForm, Controller } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { signInschema, type SignInFormData } from "@/modules/auth/validation";
+
 import useTheme from "@/lib/theme/useTheme";
 import type { Theme } from "@cognis/types";
-import type { ThemeMode } from "@/lib/theme/types";
 
 import { handleSignin } from "../api";
 
 export default function Signin() {
-    const { theme, themeMode } = useTheme();
+    const { theme } = useTheme();
     const { width, height } = useWindowDimensions();
     const isLandscape = width > height;
+    const router = useRouter();
 
-    const styles = createStyles(theme, themeMode, isLandscape);
+    const styles = createStyles(theme, isLandscape);
 
-    const [email, setEmail] = useState("");
-    const [password, setPassword] = useState("");
     const [showPassword, setShowPassword] = useState(false);
     const [focusedField, setFocusedField] = useState<string | null>(null);
+    const [apiError, setApiError] = useState<string | null>(null);
 
-    async function handleSubmit() {
-        await handleSignin(email, password);
-    }
+    const {
+        control,
+        handleSubmit,
+        formState: { errors, isValid, isSubmitting },
+    } = useForm<SignInFormData>({
+        resolver: zodResolver(signInschema),
+        mode: "onBlur",
+        defaultValues: {
+            email: "",
+            password: "",
+        },
+    });
 
-    const isFormValid = email.trim() !== "" && password.trim() !== "";
+    const onSubmit = async (data: SignInFormData) => {
+        setApiError(null);
+        const response = await handleSignin(data.email, data.password);
+        if (response?.error) {
+            setApiError(response.error);
+        } else {
+            // success, proceed to next screen (could be index)
+            router.replace("/");
+        }
+    };
 
-    const inputBorderColor = (field: string) =>
-        focusedField === field ? theme.primary : styles.input.borderColor;
+    const getBorderColor = (field: string, error?: any) => {
+        if (error) return "#EF4444"; // Red for error
+        return focusedField === field ? theme.primary : theme.subtleBorder;
+    };
 
     return (
         <View style={styles.container}>
@@ -52,42 +77,78 @@ export default function Signin() {
                         <Text style={styles.subtitle}>Sign in to access your notes</Text>
                     </View>
 
+                    {/* API Error */}
+                    {apiError && (
+                        <View style={styles.errorContainer}>
+                            <Text style={styles.errorTextGlobal}>{apiError}</Text>
+                        </View>
+                    )}
+
                     {/* Email Input */}
                     <View style={styles.fieldGroup}>
                         <Text style={styles.label}>Email</Text>
-                        <TextInput
-                            value={email}
-                            onChangeText={setEmail}
-                            placeholder="you@example.com"
-                            placeholderTextColor={styles.input.borderColor as string}
-                            keyboardType="email-address"
-                            autoCapitalize="none"
-                            autoCorrect={false}
-                            onFocus={() => setFocusedField("email")}
-                            onBlur={() => setFocusedField(null)}
-                            style={[styles.input, { borderColor: inputBorderColor("email") }]}
+                        <Controller
+                            control={control}
+                            name="email"
+                            render={({ field: { onChange, onBlur, value } }) => (
+                                <TextInput
+                                    value={value}
+                                    onChangeText={onChange}
+                                    placeholder="you@example.com"
+                                    placeholderTextColor={theme.subtleBorder}
+                                    keyboardType="email-address"
+                                    autoCapitalize="none"
+                                    autoCorrect={false}
+                                    onFocus={() => setFocusedField("email")}
+                                    onBlur={() => {
+                                        setFocusedField(null);
+                                        onBlur();
+                                    }}
+                                    style={[
+                                        styles.input,
+                                        { borderColor: getBorderColor("email", errors.email) },
+                                    ]}
+                                />
+                            )}
                         />
+                        {errors.email && (
+                            <Text style={styles.errorText}>{errors.email.message}</Text>
+                        )}
                     </View>
 
                     {/* Password Input */}
                     <View style={styles.fieldGroupLast}>
                         <Text style={styles.label}>Password</Text>
                         <View>
-                            <TextInput
-                                value={password}
-                                onChangeText={setPassword}
-                                placeholder="Your password"
-                                placeholderTextColor={styles.input.borderColor as string}
-                                secureTextEntry={!showPassword}
-                                autoCapitalize="none"
-                                autoCorrect={false}
-                                onFocus={() => setFocusedField("password")}
-                                onBlur={() => setFocusedField(null)}
-                                style={[
-                                    styles.input,
-                                    styles.passwordInput,
-                                    { borderColor: inputBorderColor("password") },
-                                ]}
+                            <Controller
+                                control={control}
+                                name="password"
+                                render={({ field: { onChange, onBlur, value } }) => (
+                                    <TextInput
+                                        value={value}
+                                        onChangeText={onChange}
+                                        placeholder="Your password"
+                                        placeholderTextColor={theme.subtleBorder}
+                                        secureTextEntry={!showPassword}
+                                        autoCapitalize="none"
+                                        autoCorrect={false}
+                                        onFocus={() => setFocusedField("password")}
+                                        onBlur={() => {
+                                            setFocusedField(null);
+                                            onBlur();
+                                        }}
+                                        style={[
+                                            styles.input,
+                                            styles.passwordInput,
+                                            {
+                                                borderColor: getBorderColor(
+                                                    "password",
+                                                    errors.password,
+                                                ),
+                                            },
+                                        ]}
+                                    />
+                                )}
                             />
                             <Pressable
                                 onPress={() => setShowPassword((prev) => !prev)}
@@ -98,18 +159,25 @@ export default function Signin() {
                                 </Text>
                             </Pressable>
                         </View>
+                        {errors.password && (
+                            <Text style={styles.errorText}>{errors.password.message}</Text>
+                        )}
                     </View>
 
                     {/* Sign In Button */}
                     <Pressable
-                        onPress={handleSubmit}
-                        disabled={!isFormValid}
+                        onPress={handleSubmit(onSubmit)}
+                        disabled={!isValid || isSubmitting}
                         style={({ pressed }) => [
                             styles.button,
-                            { opacity: !isFormValid ? 0.5 : pressed ? 0.85 : 1 },
+                            { opacity: !isValid || isSubmitting ? 0.5 : pressed ? 0.85 : 1 },
                         ]}
                     >
-                        <Text style={styles.buttonText}>Continue</Text>
+                        {isSubmitting ? (
+                            <ActivityIndicator color="#ffffff" />
+                        ) : (
+                            <Text style={styles.buttonText}>Sign In</Text>
+                        )}
                     </Pressable>
 
                     {/* Sign Up Link */}
@@ -127,11 +195,7 @@ export default function Signin() {
     );
 }
 
-function createStyles(theme: Theme, themeMode: ThemeMode, isLandscape: boolean) {
-    const isDark = themeMode === "dark";
-    const subtleBorder = isDark ? "rgba(240,240,240,0.15)" : "rgba(16,16,16,0.15)";
-    const inputBg = isDark ? "rgba(255,255,255,0.05)" : "rgba(0,0,0,0.03)";
-
+function createStyles(theme: Theme, isLandscape: boolean) {
     return StyleSheet.create({
         container: {
             flex: 1,
@@ -181,6 +245,21 @@ function createStyles(theme: Theme, themeMode: ThemeMode, isLandscape: boolean) 
             marginTop: 6,
         },
 
+        // API Error
+        errorContainer: {
+            padding: 12,
+            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            borderWidth: 1,
+            borderColor: "rgba(239, 68, 68, 0.5)",
+            borderRadius: 12,
+            marginBottom: 16,
+        },
+        errorTextGlobal: {
+            color: "#EF4444",
+            fontSize: 14,
+            textAlign: "center",
+        },
+
         // Form fields
         fieldGroup: {
             marginBottom: 16,
@@ -198,12 +277,17 @@ function createStyles(theme: Theme, themeMode: ThemeMode, isLandscape: boolean) 
         input: {
             height: 50,
             borderWidth: 1.5,
-            borderColor: subtleBorder,
             borderRadius: 12,
             paddingHorizontal: 16,
             fontSize: 16,
             color: theme.foreground,
-            backgroundColor: inputBg,
+            backgroundColor: theme.inputBg,
+        },
+        errorText: {
+            color: "#EF4444",
+            fontSize: 12,
+            marginTop: 4,
+            marginLeft: 4,
         },
         passwordInput: {
             paddingRight: 60,

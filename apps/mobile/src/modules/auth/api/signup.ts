@@ -1,7 +1,7 @@
 import { authClient } from "@/lib/auth";
 
 export async function handleSignup(name: string, email: string, password: string) {
-    const { error } = await authClient.signUp.email({
+    const { error, data } = await authClient.signUp.email({
         name,
         email,
         password,
@@ -9,6 +9,7 @@ export async function handleSignup(name: string, email: string, password: string
 
     if (error) {
         console.log(error);
-        return;
+        return { error: error.message || "An error occurred during sign up" };
     }
+    return { data };
 }
