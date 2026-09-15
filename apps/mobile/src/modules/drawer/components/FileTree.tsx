@@ -39,6 +39,7 @@ const DUMMY_DATA: TreeNode[] = [
 export const FileTree = () => {
     const { theme } = useTheme();
     const styles = createStyles(theme);
+
     const [expanded, setExpanded] = useState<Record<string, boolean>>({
         "1": true,
         "2": true,

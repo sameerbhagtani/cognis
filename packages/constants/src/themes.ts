@@ -9,6 +9,8 @@ export const dark: Theme = {
 
     subtleBorder: "#f0f0f026",
     inputBg: "#ffffff0d",
+
+    color: "#fff",
 };
 
 export const light: Theme = {
@@ -20,4 +22,6 @@ export const light: Theme = {
 
     subtleBorder: "#10101026",
     inputBg: "#00000008",
+
+    color: "#000",
 };

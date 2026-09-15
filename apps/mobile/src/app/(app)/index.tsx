@@ -1,23 +1,23 @@
-import React, { useRef } from "react";
+import React from "react";
 import { Text, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useNavigation } from "expo-router";
+import { DrawerActions } from "@react-navigation/native";
 
-import { handleSignout } from "@/modules/auth/api";
-import { CognisDrawer, CognisDrawerRef } from "@/modules/drawer";
 import useTheme from "@/lib/theme/useTheme";
 
 export default function Index() {
-    const drawerRef = useRef<CognisDrawerRef>(null);
+    const navigation = useNavigation();
     const { theme, themeMode } = useTheme();
 
     return (
-        <CognisDrawer ref={drawerRef}>
+        <>
             <StatusBar style={themeMode === "dark" ? "light" : "dark"} />
             <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
                 <View style={styles.buttonContainer}>
                     <Pressable
-                        onPress={() => drawerRef.current?.open()}
+                        onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
                         style={[
                             styles.menuButton,
                             { backgroundColor: theme.inputBg, borderColor: theme.subtleBorder },
@@ -26,10 +26,8 @@ export default function Index() {
                         <Text style={[styles.menuIcon, { color: theme.foreground }]}>☰</Text>
                     </Pressable>
                 </View>
-
-                <View style={styles.content}></View>
             </SafeAreaView>
-        </CognisDrawer>
+        </>
     );
 }
 
@@ -39,7 +37,6 @@ const styles = StyleSheet.create({
     },
     buttonContainer: {
         paddingHorizontal: 16,
-        paddingTop: 16,
         alignItems: "flex-start",
     },
     menuButton: {

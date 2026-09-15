@@ -18,15 +18,13 @@ export function DrawerTabs({ activeTab, onTabPress }: DrawerTabsProps) {
                 style={[styles.tab, activeTab === 0 && styles.activeTab]}
                 onPress={() => onTabPress(0)}
             >
-                <Text style={[styles.tabText, activeTab === 0 && styles.activeTabText]}>Files</Text>
+                <Text style={[styles.tabText, activeTab === 0 && styles.activeTabText]}>Notes</Text>
             </Pressable>
             <Pressable
                 style={[styles.tab, activeTab === 1 && styles.activeTab]}
                 onPress={() => onTabPress(1)}
             >
-                <Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>
-                    AI Chat
-                </Text>
+                <Text style={[styles.tabText, activeTab === 1 && styles.activeTabText]}>AI</Text>
             </Pressable>
         </View>
     );
@@ -62,6 +60,6 @@ const createStyles = (theme: Theme) =>
             color: theme.foreground,
         },
         activeTabText: {
-            color: "#ecebeb",
+            color: theme.color,
         },
     });

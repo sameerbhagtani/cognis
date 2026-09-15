@@ -7,4 +7,6 @@ export type Theme = {
 
     subtleBorder: string;
     inputBg: string;
+
+    color: string;
 };
