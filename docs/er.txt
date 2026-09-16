@@ -1,6 +1,8 @@
 user [icon: user, color: green] {
   id UUID PRIMARY KEY
-  clerkUserId VARCHAR(50) NOT NULL UNIQUE
+  name VARCHAR(100) NOT NULL
+  email VARCHAR(255) NOT NULL UNIQUE
+  // ... other better auth fields
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL

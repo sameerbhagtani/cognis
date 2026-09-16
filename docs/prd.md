@@ -4,7 +4,7 @@
 
 Phase 1 covers:
 
-- Auth (Clerk)
+- Auth (Better Auth)
 - Notes management via folders and notes
 - Everything scoped under workspaces
 - Read-only sharing (workspace-level only, via 'workspace_member.role = viewer')
@@ -26,8 +26,8 @@ Explicitly out of scope for Phase 1:
 
 ## Schema Overview
 
-- 'user' - 'clerkUserId' (unique), maps Clerk identity to an internal id
-- 'workspace' - top-level container
+- 'user' - owned by Better Auth ('email' unique, plus its other standard fields), Better Auth also owns 'session', 'account', and 'verification' tables alongside it
+- 'workspace' - top-level container, carries 'ownerId' ('NOT NULL REFERENCES user.id'), see the redundancy note under API Endpoints > Workspaces for why this exists alongside the 'owner' role
 - 'workspace_member' - join table between 'user' and 'workspace', carries 'role' enum ('owner' / 'editor' / 'viewer'), unique on '(workspaceId, userId)'
 - 'folder' - self-referencing via 'parentFolderId', scoped to a 'workspaceId'
 - 'note' - belongs to a 'folderId' (nullable, can live at workspace root), scoped to a 'workspaceId', 'content' as plain 'TEXT' (no block model, no chunking)
@@ -60,6 +60,7 @@ Explicitly out of scope for Phase 1:
 - 'note.folderId -> folder.id ON DELETE CASCADE'
 - 'workspace_member.workspaceId -> workspace.id ON DELETE CASCADE'
 - 'workspace_member.userId -> user.id ON DELETE CASCADE' (so a deleted user's memberships clean up automatically)
+- 'workspace.ownerId -> user.id ON DELETE CASCADE' (deleting a user deletes every workspace they own, cascading through that workspace's folders/notes/members too, since user deletion isn't a Phase 1 feature this is inert for now, but it's the chosen behavior for when it becomes relevant, versus 'RESTRICT' which would block user deletion until ownership is transferred)
 
 ---
 
@@ -67,19 +68,20 @@ Explicitly out of scope for Phase 1:
 
 Rule of thumb used to derive these: index any column that shows up in a 'WHERE', 'JOIN ON', or 'ORDER BY' on a table that will grow large, especially FK columns, which Postgres does not auto-index (unlike primary keys).
 
-| Table              | Index                                | Why                                                                                                        | Example query it optimises                                                 |
-| ------------------ | ------------------------------------ | ---------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
-| 'folder'           | 'workspaceId'                        | List all folders in a workspace                                                                            | 'SELECT \* FROM folder WHERE workspaceId = $1'                             |
-| 'folder'           | 'parentFolderId'                     | List sub-folders of a folder                                                                               | 'SELECT \* FROM folder WHERE parentFolderId = $1'                          |
-| 'folder'           | '(workspaceId, deletedAt)' composite | Trash view; also serves plain 'workspaceId' lookups                                                        | 'SELECT \* FROM folder WHERE workspaceId = $1 AND deletedAt IS NOT NULL'   |
-| 'folder'           | 'deletedBatchId'                     | Restore-by-batch                                                                                           | 'UPDATE folder SET deletedAt = NULL WHERE deletedBatchId = $1'             |
-| 'note'             | 'workspaceId'                        | List all notes in a workspace                                                                              | 'SELECT \* FROM note WHERE workspaceId = $1'                               |
-| 'note'             | 'folderId'                           | List notes in a folder                                                                                     | 'SELECT \* FROM note WHERE folderId = $1'                                  |
-| 'note'             | '(workspaceId, deletedAt)' composite | Trash view; also serves plain 'workspaceId' lookups                                                        | 'SELECT \* FROM note WHERE workspaceId = $1 AND deletedAt IS NOT NULL'     |
-| 'note'             | 'deletedBatchId'                     | Restore-by-batch                                                                                           | 'UPDATE note SET deletedAt = NULL WHERE deletedBatchId = $1'               |
-| 'workspace_member' | 'userId'                             | 'Which workspaces does this user belong to' (workspace switcher)                                           | 'SELECT \* FROM workspace_member WHERE userId = $1'                        |
-| 'workspace_member' | '(workspaceId, userId)' UNIQUE       | Auth check on ~every request, already covered by the uniqueness constraint                                 | 'SELECT role FROM workspace_member WHERE workspaceId = $1 AND userId = $2' |
-| 'user'             | 'clerkUserId' UNIQUE                 | Clerk to internal user lookup on every authenticated request, already covered by the uniqueness constraint | 'SELECT \* FROM "user" WHERE clerkUserId = $1'                             |
+| Table              | Index                                | Why                                                                                                                             | Example query it optimises                                                 |
+| ------------------ | ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| 'folder'           | 'workspaceId'                        | List all folders in a workspace                                                                                                 | 'SELECT * FROM folder WHERE workspaceId = $1'                              |
+| 'folder'           | 'parentFolderId'                     | List sub-folders of a folder                                                                                                    | 'SELECT * FROM folder WHERE parentFolderId = $1'                           |
+| 'folder'           | '(workspaceId, deletedAt)' composite | Trash view; also serves plain 'workspaceId' lookups                                                                             | 'SELECT * FROM folder WHERE workspaceId = $1 AND deletedAt IS NOT NULL'    |
+| 'folder'           | 'deletedBatchId'                     | Restore-by-batch                                                                                                                | 'UPDATE folder SET deletedAt = NULL WHERE deletedBatchId = $1'             |
+| 'note'             | 'workspaceId'                        | List all notes in a workspace                                                                                                   | 'SELECT * FROM note WHERE workspaceId = $1'                                |
+| 'note'             | 'folderId'                           | List notes in a folder                                                                                                          | 'SELECT * FROM note WHERE folderId = $1'                                   |
+| 'note'             | '(workspaceId, deletedAt)' composite | Trash view; also serves plain 'workspaceId' lookups                                                                             | 'SELECT * FROM note WHERE workspaceId = $1 AND deletedAt IS NOT NULL'      |
+| 'note'             | 'deletedBatchId'                     | Restore-by-batch                                                                                                                | 'UPDATE note SET deletedAt = NULL WHERE deletedBatchId = $1'               |
+| 'workspace_member' | 'userId'                             | 'Which workspaces does this user belong to' (workspace switcher)                                                                | 'SELECT * FROM workspace_member WHERE userId = $1'                         |
+| 'workspace_member' | '(workspaceId, userId)' UNIQUE       | Auth check on ~every request, already covered by the uniqueness constraint                                                      | 'SELECT role FROM workspace_member WHERE workspaceId = $1 AND userId = $2' |
+| 'user'             | 'email' UNIQUE                       | Better Auth login lookup, already covered by the uniqueness constraint                                                          | 'SELECT * FROM "user" WHERE email = $1'                                    |
+| 'session'          | 'token' UNIQUE                       | Session lookup on every authenticated request, Better Auth manages this table, already covered by its own uniqueness constraint | 'SELECT * FROM session WHERE token = $1'                                   |
 
 Deliberately not indexed for Phase 1: 'folder.name', 'note.title', no filtering/searching on these yet, alphabetical sort doesn't need an index at this scale.
 
@@ -101,7 +103,9 @@ Convention: mutations (create/update/delete/move) go through REST. The server th
 
 ### Auth
 
-- 'POST /auth/webhook/clerk' - Clerk webhook, syncs 'user' row on create/update. No delete handling needed since user deletion isn't a Phase 1 feature.
+- 'ALL /api/auth/*' - mounted directly in the Express app, Better Auth's own handler serves sign-up, sign-in, sign-out, session-check, password reset, etc. under this path. Not hand-written, provided by the library. No external webhook needed, Better Auth's tables are the source of truth directly, nothing to sync from elsewhere.
+- Auth middleware calls Better Auth's session check against the request to populate 'req.user', same role in the pipeline as before, different implementation underneath.
+- Mobile note: unlike Clerk, Better Auth has no official pre-built Expo sign-in UI, sign-in/sign-up screens and session storage need to be built by hand on the client side. Also, email sending (verification, password reset) needs an email provider hooked up (e.g. Resend/SMTP), Better Auth doesn't send these for you the way Clerk does.
 
 ### Workspaces
 
@@ -152,7 +156,7 @@ Convention: mutations (create/update/delete/move) go through REST. The server th
 
 ### Connection model
 
-- One socket connection per client, authenticated the same way as REST (Clerk session)
+- One socket connection per client, authenticated the same way as REST (Better Auth session)
 - On connect (or on switching workspace), client joins a room scoped to that workspace, e.g. 'workspace:{workspaceId}'
 - Server must verify the connecting user is actually a 'workspace_member' of that workspace before allowing the join, viewers included (they receive, they just never emit)
 - Phase 1 has no client to server write events over the socket, only server to client broadcasts, so there's no permission check needed per-event beyond the room join check
