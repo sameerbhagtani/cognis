@@ -5,6 +5,8 @@ import cors from "cors";
 import { toNodeHandler } from "better-auth/node";
 import { auth } from "./lib/auth.js";
 
+import apiRoutes from "./modules/index.js";
+
 import notFoundHandler from "./shared/middlewares/notFoundHandler.js";
 import errorHandler from "./shared/middlewares/errorHandler.js";
 
@@ -30,7 +32,7 @@ export default function createServerApplication(): Application {
         return res.status(200).json({ status: "ok" });
     });
 
-    // routes
+    app.use("/api", apiRoutes);
 
     app.use(notFoundHandler);
     app.use(errorHandler);

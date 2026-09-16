@@ -1,4 +1,5 @@
 import { assertWorkspaceRole, type WorkspaceRole } from "../services/workspaceAccess.js";
+import parseUuidParam from "../utils/parseUuidParam.js";
 
 import type { NextFunction, Request, Response } from "express";
 
@@ -11,7 +12,7 @@ export default function requireWorkspaceRole(allowedRoles: WorkspaceRole[]) {
         next: NextFunction,
     ) {
         req.workspaceMember = await assertWorkspaceRole(
-            req.params.workspaceId,
+            parseUuidParam(req.params.workspaceId, "workspaceId"),
             req.user.id,
             allowedRoles,
         );

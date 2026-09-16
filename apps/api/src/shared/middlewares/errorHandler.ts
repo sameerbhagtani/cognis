@@ -27,11 +27,13 @@ export default function errorHandler(
         });
     }
 
+    // treeifyError over flattenError: flatten drops everything to formErrors on
+    // union schemas, which would leave the client with no usable detail.
     if (err instanceof ZodError) {
         return res.status(400).json({
             success: false,
             message: "Validation failed",
-            errors: z.flattenError(err).fieldErrors,
+            errors: z.treeifyError(err),
         });
     }
 
