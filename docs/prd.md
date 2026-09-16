@@ -177,11 +177,18 @@ Note events:
 - 'note:deleted' (soft delete, payload includes 'deletedBatchId')
 - 'note:restored'
 
+Member events:
+
+- 'member:role_changed' (payload includes 'userId' + the new 'role')
+- 'member:removed' (payload includes 'userId')
+
 ### Important considerations
 
 - 'note:updated' needs debouncing/throttling on the emit side. If content updates are saved on every keystroke or every few seconds, broadcasting on every single write will flood viewers with events, batch or throttle the broadcast (e.g. emit at most once every N ms per note), the underlying REST save can still happen more often if you want autosave granularity, the broadcast just needs to be coarser.
 - Since Phase 1 has no CRDT and no real concurrent-editing support, if two editors somehow write to the same note near-simultaneously it's last-write-wins at the DB level, the socket layer doesn't need to solve this, it's just out of scope for now.
 - A moved or deleted folder should imply its descendants moved/deleted too on the client's tree view, decide whether the socket event payload includes the full list of affected descendant ids, or whether the client just refetches the subtree when it gets the event. Cheaper to just have the client refetch on 'folder:moved' / 'folder:deleted' rather than serializing the whole affected subtree into the event.
+- The member events exist because the client caches the current user's role (returned by 'GET /workspaces' and 'GET /workspaces/:workspaceId') to decide whether to render edit controls. Without them, an owner demoting an editor to viewer leaves that client showing edit controls until it refetches, and its writes start failing with 403s. Client-side role checks are UX only, the server re-checks the role on every mutation regardless.
+- 'member:removed' should also force the removed user out of the 'workspace:{workspaceId}' room, otherwise they keep receiving broadcasts for a workspace they no longer belong to.
 
 ---
 

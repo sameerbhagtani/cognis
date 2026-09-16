@@ -13,17 +13,18 @@ import env from "./shared/config/env.js";
 export default function createServerApplication(): Application {
     const app = express();
 
-    app.all("/api/auth/*splat", toNodeHandler(auth));
-
-    app.use(express.json());
-    app.use(cookieParser());
-
     app.use(
         cors({
             origin: env.CLIENT_URL,
             credentials: true,
         }),
     );
+
+    // Must stay ahead of express.json(): Better Auth reads the raw request body.
+    app.all("/api/auth/*splat", toNodeHandler(auth));
+
+    app.use(express.json());
+    app.use(cookieParser());
 
     app.get("/api/health", (_req, res) => {
         return res.status(200).json({ status: "ok" });

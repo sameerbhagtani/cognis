@@ -1,14 +1,41 @@
+import { z, ZodError } from "zod";
+
 import ApiError from "../utils/ApiError.js";
 
-import type { Request, Response } from "express";
+import type { NextFunction, Request, Response } from "express";
 
-export default function errorHandler(err: Error, _req: Request, res: Response) {
+// The 4th parameter is required: Express only treats a middleware as an error
+// handler when its arity is exactly 4.
+export default function errorHandler(
+    err: Error,
+    _req: Request,
+    res: Response,
+    _next: NextFunction,
+) {
     if (err instanceof ApiError) {
         return res.status(err.statusCode).json({
             success: false,
             message: err.message,
         });
     }
+
+    // express.json() rejects unparseable bodies with a SyntaxError carrying the raw body.
+    if (err instanceof SyntaxError && "body" in err) {
+        return res.status(400).json({
+            success: false,
+            message: "Malformed JSON body",
+        });
+    }
+
+    if (err instanceof ZodError) {
+        return res.status(400).json({
+            success: false,
+            message: "Validation failed",
+            errors: z.flattenError(err).fieldErrors,
+        });
+    }
+
+    console.error(err);
 
     return res.status(500).json({
         success: false,
