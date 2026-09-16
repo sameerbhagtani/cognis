@@ -162,6 +162,9 @@ importers:
             "@better-auth/drizzle-adapter":
                 specifier: ^1.7.4
                 version: 1.7.4(@better-auth/core@1.7.4(@better-auth/utils@0.4.2)(@better-fetch/fetch@1.3.1)(better-call@1.4.0(zod@4.6.4))(jose@6.2.12)(kysely@0.29.5)(nanostores@1.5.3))(@better-auth/utils@0.4.2)(drizzle-orm@1.0.0-rc.4(@types/pg@8.23.1)(pg@8.23.0)(zod@4.6.4))
+            axios:
+                specifier: ^1.20.0
+                version: 1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1)
             better-auth:
                 specifier: ^1.7.4
                 version: 1.7.4(drizzle-kit@1.0.0-rc.4)(drizzle-orm@1.0.0-rc.4(@types/pg@8.23.1)(pg@8.23.0)(zod@4.6.4))(pg@8.23.0)(react-dom@19.2.3(react@19.2.3))(react@19.2.3)
@@ -4571,6 +4574,13 @@ packages:
         engines: { node: ">=0.4.0" }
         hasBin: true
 
+    agent-base@6.0.2:
+        resolution:
+            {
+                integrity: sha512-RZNwNclF7+MS/8bDg70amg32dyeZGZxiDuQmZxKLAlQjr3jGyLx+4Kkk58UO7D2QdgFIQCovuSuZESne6RG6XQ==,
+            }
+        engines: { node: ">= 6.0.0" }
+
     agent-base@7.1.4:
         resolution:
             {
@@ -4815,12 +4825,24 @@ packages:
             }
         engines: { node: ">= 0.4" }
 
+    asynckit@0.4.0:
+        resolution:
+            {
+                integrity: sha512-Oei9OH4tRh0YqU3GxhX79dM/mwVgvbZJaSNaRk+bshkj0S5cfHcgYakreBjrHwatXKbz+IoIdYLxrKim2MjW0Q==,
+            }
+
     available-typed-arrays@1.0.7:
         resolution:
             {
                 integrity: sha512-wvUjBtSGN7+7SjNpq/9M2Tg350UZD3q62IFZLbRAR1bSMlCo1ZaeW+BJ+D090e4hIIZLBcTDWe4Mh4jvUDajzQ==,
             }
         engines: { node: ">= 0.4" }
+
+    axios@1.20.0:
+        resolution:
+            {
+                integrity: sha512-r8aOh8j9cGKpgQAqpzrUHnSIc6a59Y3Xf/cv8sy1DrHCkZHzQGEuoq1tARk6qSyDdtQGSDgpb9kFlruzPvrgwg==,
+            }
 
     axobject-query@4.1.0:
         resolution:
@@ -5310,6 +5332,13 @@ packages:
             }
         engines: { node: ">=12.5.0" }
 
+    combined-stream@1.0.8:
+        resolution:
+            {
+                integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==,
+            }
+        engines: { node: ">= 0.8" }
+
     comma-separated-tokens@2.0.3:
         resolution:
             {
@@ -5676,6 +5705,13 @@ packages:
             {
                 integrity: sha512-7z22QmUWiQ/2d0KkdYmANbRUVABpZ9SNYyH5vx6PZ+nE5bcC0l7uFvEfHlyld/HcGBFTL536ClDt3DEcSlEJAQ==,
             }
+
+    delayed-stream@1.0.0:
+        resolution:
+            {
+                integrity: sha512-ZySD7Nf91aLB0RxL4KGrKHBXl7Eds1DAmEdcoVawXnLD7SDhpNgtuII2aAkg7a7QS41jxPSZ17p4VdGnMHk3MQ==,
+            }
+        engines: { node: ">=0.4.0" }
 
     depd@2.0.0:
         resolution:
@@ -6810,6 +6846,18 @@ packages:
                 integrity: sha512-3PYnM29RFXwvAN6Pc/scUfkI7RwhQ/xqyLUyPNlXUp9S40zI8nup9tUSrTLSVnWGBN38FNiGWbwZOB6uR4OGdw==,
             }
 
+    follow-redirects@1.16.0:
+        resolution:
+            {
+                integrity: sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==,
+            }
+        engines: { node: ">=4.0" }
+        peerDependencies:
+            debug: "*"
+        peerDependenciesMeta:
+            debug:
+                optional: true
+
     fontace@0.4.1:
         resolution:
             {
@@ -6835,6 +6883,13 @@ packages:
                 integrity: sha512-dKx12eRCVIzqCxFGplyFKJMPvLEWgmNtUrpTiJIR5u97zEhRG8ySrtboPHZXx7daLxQVrl643cTzbab2tkQjxg==,
             }
         engines: { node: ">= 0.4" }
+
+    form-data@4.0.6:
+        resolution:
+            {
+                integrity: sha512-vKatAh4SlVfgbv+YtmhiRjhEMJsYpsG1Y2rMQtR+SVSbytsSD1YGzDIcrAJmdFec88u/+VoGmxnl+80gL1tRCQ==,
+            }
+        engines: { node: ">= 6" }
 
     forwarded@0.2.0:
         resolution:
@@ -7211,6 +7266,13 @@ packages:
                 integrity: sha512-4FbRdAX+bSdmo4AUFuS0WNiPz8NgFt+r8ThgNWmlrjQjt1Q7ZR9+zTlce2859x4KSXrwIsaeTqDoKQmtP8pLmQ==,
             }
         engines: { node: ">= 0.8" }
+
+    https-proxy-agent@5.0.1:
+        resolution:
+            {
+                integrity: sha512-dFcAjpTQFgoLMzC2VwU+C/CbS7uRL0lWmxDITmqm7C+7F0Odmj6s9l6alZc6AELXhrnggM2CeWSXHGOdX2YtwA==,
+            }
+        engines: { node: ">= 6" }
 
     https-proxy-agent@7.0.6:
         resolution:
@@ -9353,6 +9415,13 @@ packages:
                 integrity: sha512-llQsMLSUDUPT44jdrU/O37qlnifitDP+ZwrmmZcoSKyLKvtZxpyV0n2/bD/N4tBAAZ/gJEdZU7KMraoK1+XYAg==,
             }
         engines: { node: ">= 0.10" }
+
+    proxy-from-env@2.1.0:
+        resolution:
+            {
+                integrity: sha512-cJ+oHTW1VAEa8cJslgmUZrc+sjRKgAKl3Zyse6+PV38hZe/V6Z14TbCuXcan9F9ghlz4QrFr2c92TNF82UkYHA==,
+            }
+        engines: { node: ">=10" }
 
     punycode@2.3.1:
         resolution:
@@ -14233,6 +14302,12 @@ snapshots:
 
     acorn@8.18.0: {}
 
+    agent-base@6.0.2(supports-color@8.1.1):
+        dependencies:
+            debug: 4.4.3(supports-color@8.1.1)
+        transitivePeerDependencies:
+            - supports-color
+
     agent-base@7.1.4: {}
 
     agent-cli-detector@0.1.7: {}
@@ -14482,9 +14557,21 @@ snapshots:
 
     async-function@1.0.0: {}
 
+    asynckit@0.4.0: {}
+
     available-typed-arrays@1.0.7:
         dependencies:
             possible-typed-array-names: 1.1.0
+
+    axios@1.20.0(debug@4.4.3(supports-color@8.1.1))(supports-color@8.1.1):
+        dependencies:
+            follow-redirects: 1.16.0(debug@4.4.3(supports-color@8.1.1))
+            form-data: 4.0.6
+            https-proxy-agent: 5.0.1(supports-color@8.1.1)
+            proxy-from-env: 2.1.0
+        transitivePeerDependencies:
+            - debug
+            - supports-color
 
     axobject-query@4.1.0: {}
 
@@ -14818,6 +14905,10 @@ snapshots:
             color-convert: 2.0.1
             color-string: 1.9.1
 
+    combined-stream@1.0.8:
+        dependencies:
+            delayed-stream: 1.0.0
+
     comma-separated-tokens@2.0.3: {}
 
     commander@11.1.0: {}
@@ -15026,6 +15117,8 @@ snapshots:
             object-keys: 1.1.1
 
     defu@6.1.7: {}
+
+    delayed-stream@1.0.0: {}
 
     depd@2.0.0: {}
 
@@ -15977,6 +16070,10 @@ snapshots:
 
     flow-enums-runtime@0.0.6: {}
 
+    follow-redirects@1.16.0(debug@4.4.3(supports-color@8.1.1)):
+        optionalDependencies:
+            debug: 4.4.3(supports-color@8.1.1)
+
     fontace@0.4.1:
         dependencies:
             fontkitten: 1.0.3
@@ -15990,6 +16087,14 @@ snapshots:
     for-each@0.3.5:
         dependencies:
             is-callable: 1.2.7
+
+    form-data@4.0.6:
+        dependencies:
+            asynckit: 0.4.0
+            combined-stream: 1.0.8
+            es-set-tostringtag: 2.1.0
+            hasown: 2.0.4
+            mime-types: 2.1.35
 
     forwarded@0.2.0: {}
 
@@ -16200,6 +16305,13 @@ snapshots:
             setprototypeof: 1.2.0
             statuses: 2.0.2
             toidentifier: 1.0.1
+
+    https-proxy-agent@5.0.1(supports-color@8.1.1):
+        dependencies:
+            agent-base: 6.0.2(supports-color@8.1.1)
+            debug: 4.4.3(supports-color@8.1.1)
+        transitivePeerDependencies:
+            - supports-color
 
     https-proxy-agent@7.0.6(supports-color@8.1.1):
         dependencies:
@@ -17623,6 +17735,8 @@ snapshots:
         dependencies:
             forwarded: 0.2.0
             ipaddr.js: 1.9.1
+
+    proxy-from-env@2.1.0: {}
 
     punycode@2.3.1: {}
 
