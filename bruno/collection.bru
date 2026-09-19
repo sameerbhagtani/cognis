@@ -1,0 +1,50 @@
+docs {
+  # Cognis API
+
+  Start the database and API, then run **Auth → Sign In**. Bruno keeps the session
+  cookie in its jar and every other request depends on it.
+
+  ```
+  pnpm db:up
+  pnpm --filter @cognis/api dev
+  ```
+
+  Seeded development accounts are in the Local environment, defaulting to
+  owner@example.com with the password password123.
+
+  ## Every non-GET request sends an Origin header
+
+  Better Auth runs a CSRF check on any state-changing request that arrives with a
+  cookie, and rejects it with `403 MISSING_OR_NULL_ORIGIN` when the header is
+  absent. That failure does not name the cause, so it is worth knowing up front.
+
+  Each non-GET request here sends `Origin: {{clientUrl}}`, which is in the server's
+  trustedOrigins. GET requests skip the check and so omit it.
+
+  ## Ids chain between requests
+
+  Requests that create something store its id, and list requests do the same from
+  their first result, so most requests can be run without filling anything in.
+
+  | Variable | Set by |
+  | --- | --- |
+  | workspaceId | Create Workspace, List Workspaces |
+  | memberId | Add Member, List Members |
+  | folderId | Create Folder, List Folders |
+  | noteId | Create Note, List Notes |
+  | deletedBatchId | Delete Folder, Delete Note, List Trash |
+
+  ## Two requests break a sequential run
+
+  Both sit with the resource they belong to rather than being hidden somewhere
+  unexpected, so skip them when running the collection end to end:
+
+  - **Auth → Sign Out** clears the cookie, so everything after it returns 401.
+  - **Workspaces → Delete Workspace** removes the workspace the later folders use.
+
+  ## Realtime
+
+  Events are not covered here. Bruno's WebSocket client speaks raw RFC 6455 while
+  the server is socket.io, which layers Engine.IO framing on top, so the events
+  cannot be driven as ordinary saved requests.
+}
