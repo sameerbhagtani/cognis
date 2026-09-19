@@ -47,8 +47,11 @@ Explicitly out of scope for Phase 1:
 
 ### Hard delete
 
-- Folders & notes: happens only via a scheduled purge job (e.g. purge anything with 'deletedAt' older than N days). No manual 'delete forever' button in Phase 1.
+- Folders & notes: happens only via a scheduled purge job, which removes anything with 'deletedAt' older than 'TRASH_RETENTION_DAYS' (default 30). No manual 'delete forever' button in Phase 1.
     - Since this is a real 'DELETE', Postgres's 'ON DELETE CASCADE' handles the multi-level cascade natively, no recursive CTE needed here, unlike soft delete.
+    - Runs as its own entrypoint ('pnpm purge', 'src/jobs/purgeTrash.ts') driven by system cron, not as a timer inside the API process. An in-process timer fires once per instance, so scaling past one would run concurrent purges over the same rows; a separate entrypoint keeps exactly one runner however many API processes exist. It exits non-zero on failure so cron can report it.
+    - Takes the same per-workspace advisory lock as moves, soft deletes and restores, so it can't remove rows a restore is midway through reading.
+    - That same cascade is why the job can't simply delete every expired folder. Deleting a folder takes its whole subtree, expired or not. Today a row can only be trashed at or before its parent, so an expired folder's subtree is always expired too, but that holds because of how restore behaves rather than because anything enforces it. As this is the only irreversible operation in the system, the job checks each expired folder's subtree first and skips (and reports) any that still holds a live or recently trashed row, purging it on a later run once the rest expires.
 - 'workspace_member' removal (kicking a user out): hard delete only, immediate, no trash step.
 - 'workspace' deletion: hard delete only, immediate, no trash step. A single 'DELETE FROM workspace WHERE id = X' cascades through all folders (any depth), all notes, and all 'workspace_member' rows via the FK graph, no app-level loop needed.
 

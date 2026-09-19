@@ -11,6 +11,8 @@ const envSchema = z.object({
     BREVO_API_KEY: z.string().min(1),
     EMAIL_FROM_ADDRESS: z.email(),
     EMAIL_FROM_NAME: z.string().default("Cognis"),
+
+    TRASH_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {

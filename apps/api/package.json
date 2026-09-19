@@ -6,6 +6,8 @@
         "dev": "tsx watch src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
+        "purge": "node dist/jobs/purgeTrash.js",
+        "purge:dev": "tsx src/jobs/purgeTrash.ts",
         "lint": "eslint .",
         "check-types": "tsc --noEmit"
     },

@@ -1,4 +1,4 @@
-import { db, eq, schemas, sql } from "@cognis/database";
+import { and, db, eq, inArray, lt, schemas, sql } from "@cognis/database";
 
 import { lockWorkspace, type Tx } from "./workspaceLock.js";
 import ApiError from "../utils/ApiError.js";
@@ -83,4 +83,124 @@ export async function findBatchWorkspaceId(deletedBatchId: string) {
     const [row] = result.rows as { workspace_id: string }[];
 
     return row?.workspace_id ?? null;
+}
+
+const MS_PER_DAY = 24 * 60 * 60 * 1000;
+
+/**
+ * The only path that hard-deletes folders and notes. Everything else soft
+ * deletes, so keeping the real DELETE in one place means there is one thing to
+ * reason about when asking how a row can actually disappear.
+ *
+ * Takes the workspace lock like the other tree operations, so a restore can't be
+ * reading rows this is about to remove.
+ *
+ * ON DELETE CASCADE makes this sharper than it looks: deleting an expired folder
+ * takes its whole subtree, expired or not. Today a row can only be trashed at or
+ * before its parent, so an expired folder's subtree is always expired too — but
+ * that holds because of how restore behaves, not because anything enforces it.
+ * Since this is the only irreversible operation here, a folder whose subtree
+ * still contains a live or recently trashed row is skipped and reported rather
+ * than trusted, and purges on a later run once the rest of it expires.
+ */
+export async function purgeExpiredTrash(retentionDays: number) {
+    const cutoff = new Date(Date.now() - retentionDays * MS_PER_DAY);
+
+    const scan = await db.execute(sql`
+        SELECT workspace_id FROM folder WHERE deleted_at < ${cutoff}
+        UNION
+        SELECT workspace_id FROM note WHERE deleted_at < ${cutoff}
+    `);
+
+    const workspaceIds = (scan.rows as { workspace_id: string }[]).map((row) => row.workspace_id);
+
+    let folders = 0;
+    let notes = 0;
+    let skipped = 0;
+
+    for (const workspaceId of workspaceIds) {
+        await db.transaction(async (tx) => {
+            await lockWorkspace(tx, workspaceId);
+
+            const expiredNotes = await tx
+                .select({ id: schemas.note.id })
+                .from(schemas.note)
+                .where(
+                    and(
+                        eq(schemas.note.workspaceId, workspaceId),
+                        lt(schemas.note.deletedAt, cutoff),
+                    ),
+                );
+
+            const expiredFolders = await tx
+                .select({ id: schemas.folder.id })
+                .from(schemas.folder)
+                .where(
+                    and(
+                        eq(schemas.folder.workspaceId, workspaceId),
+                        lt(schemas.folder.deletedAt, cutoff),
+                    ),
+                );
+
+            // Roots whose subtree still holds something the cascade must not take.
+            const unsafe = await tx.execute(sql`
+                WITH RECURSIVE subtree AS (
+                    SELECT id AS root_id, id AS node_id
+                    FROM folder
+                    WHERE workspace_id = ${workspaceId} AND deleted_at < ${cutoff}
+                    UNION
+                    SELECT parent.root_id, child.id
+                    FROM subtree parent
+                    JOIN folder child ON child.parent_folder_id = parent.node_id
+                )
+                SELECT DISTINCT subtree.root_id
+                FROM subtree
+                JOIN folder node ON node.id = subtree.node_id
+                WHERE node.deleted_at IS NULL
+                   OR node.deleted_at >= ${cutoff}
+                   OR EXISTS (
+                        SELECT 1 FROM note
+                        WHERE note.folder_id = subtree.node_id
+                          AND (note.deleted_at IS NULL OR note.deleted_at >= ${cutoff})
+                   )
+            `);
+
+            const unsafeRoots = new Set(
+                (unsafe.rows as { root_id: string }[]).map((row) => row.root_id),
+            );
+
+            const purgeableFolders = expiredFolders.filter((folder) => !unsafeRoots.has(folder.id));
+
+            if (unsafeRoots.size > 0) {
+                console.warn(
+                    `skipped ${unsafeRoots.size} expired folder(s) in workspace ${workspaceId}: ` +
+                        `subtree still holds rows inside the retention window`,
+                );
+                skipped += unsafeRoots.size;
+            }
+
+            if (expiredNotes.length > 0) {
+                await tx.delete(schemas.note).where(
+                    inArray(
+                        schemas.note.id,
+                        expiredNotes.map((note) => note.id),
+                    ),
+                );
+            }
+
+            if (purgeableFolders.length > 0) {
+                await tx.delete(schemas.folder).where(
+                    inArray(
+                        schemas.folder.id,
+                        purgeableFolders.map((folder) => folder.id),
+                    ),
+                );
+            }
+
+            notes += expiredNotes.length;
+            folders += purgeableFolders.length;
+        });
+    }
+
+    return { cutoff, workspaces: workspaceIds.length, folders, notes, skipped };
 }
