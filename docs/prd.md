@@ -207,6 +207,28 @@ Member payloads stay thin on purpose, carrying ids rather than user records, so 
 
 ---
 
+## Running the Purge Job
+
+The purge is the one part of the API that nothing starts for you. 'pnpm start' runs the server and only the server, so on a fresh deploy the trash grows forever until something external invokes the job. That is the cost of keeping it out of the API process: a timer inside the server would fire once per instance, and two instances would run concurrent purges over the same rows.
+
+It is a plain one-shot process that exits 0 on success and 1 on failure, so anything that can run a command on a schedule will do.
+
+On a single box, cron:
+
+```
+0 3 * * * cd /path/to/cognis/apps/api && /absolute/path/to/node dist/jobs/purgeTrash.js >> /var/log/cognis-purge.log 2>&1
+```
+
+Three things that will silently break that line:
+
+- **Use an absolute path to node.** Cron's 'PATH' is minimal, and a version manager (mise, nvm, asdf) puts node somewhere it won't look. 'which node' gives the path to use.
+- **Keep the 'cd'.** The job reads '.env' through 'dotenv/config', which resolves against the working directory. Without it 'DATABASE_URL' is missing and the job exits 1 before doing anything.
+- **Build first.** 'dist/jobs/purgeTrash.js' only exists after 'pnpm build'. Before that, run 'pnpm purge:dev', which goes through tsx and reads the source directly.
+
+On a container platform, use its own scheduler instead of crontab — a Kubernetes 'CronJob', a Railway or Render cron service, a scheduled Fly machine — running the same command. Redirecting output somewhere you will actually read matters either way: a skipped folder is reported on stdout, and that is the only signal that something in the trash is stuck.
+
+---
+
 ## Open Questions / To Revisit
 
 - Notifying a user that they have been added to a workspace. There is deliberately no 'member:added' socket event: the people already in the room don't need it, and the one person who does have a reason to care has no socket in that room yet, and won't until their client joins. A per-user channel would be a change to the connection model, so the plan is to send that user an email instead, reusing the Brevo sender already wired up for auth.
