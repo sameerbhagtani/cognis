@@ -138,26 +138,22 @@ export async function softDeleteFolder(folderId: string) {
     return deletedBatchId;
 }
 
-export async function restoreBatch(deletedBatchId: string) {
-    await db.transaction(async (tx) => {
-        await tx
-            .update(schemas.folder)
-            .set({ deletedAt: null, deletedBatchId: null })
-            .where(eq(schemas.folder.deletedBatchId, deletedBatchId));
-
-        await tx
-            .update(schemas.note)
-            .set({ deletedAt: null, deletedBatchId: null })
-            .where(eq(schemas.note.deletedBatchId, deletedBatchId));
-    });
-}
-
-export async function isFolderDeleted(folderId: string) {
+/**
+ * Answers whether a folder blocks restoring `deletedBatchId`. A folder trashed in
+ * that same batch is coming back with it, so only a folder trashed under a
+ * different batch is an obstacle.
+ */
+export async function isFolderTrashedOutsideBatch(folderId: string, deletedBatchId: string) {
     const [row] = await db
-        .select({ deletedAt: schemas.folder.deletedAt })
+        .select({
+            deletedAt: schemas.folder.deletedAt,
+            deletedBatchId: schemas.folder.deletedBatchId,
+        })
         .from(schemas.folder)
         .where(eq(schemas.folder.id, folderId))
         .limit(1);
 
-    return row ? row.deletedAt !== null : null;
+    if (!row?.deletedAt) return false;
+
+    return row.deletedBatchId !== deletedBatchId;
 }

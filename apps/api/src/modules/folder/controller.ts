@@ -2,6 +2,7 @@ import * as folderService from "./service.js";
 import { folderOf } from "./middleware.js";
 import { createFolderSchema, listFoldersQuerySchema, updateFolderSchema } from "./validation.js";
 
+import { restoreBatch } from "../../shared/services/trash.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
@@ -88,15 +89,17 @@ export async function restoreFolder(req: Request<FolderParams>, res: Response) {
     }
 
     // Restoring under a still-trashed parent would produce a live folder that no
-    // tree query can reach, so the parent has to come back first.
+    // tree query can reach. A parent inside this same batch is fine: it comes back
+    // in the same restore.
     if (folder.parentFolderId) {
-        const parentDeleted = await folderService.isFolderDeleted(folder.parentFolderId);
-        if (parentDeleted) {
-            throw ApiError.conflict("Restore the parent folder first");
-        }
+        const blocked = await folderService.isFolderTrashedOutsideBatch(
+            folder.parentFolderId,
+            folder.deletedBatchId,
+        );
+        if (blocked) throw ApiError.conflict("Restore the parent folder first");
     }
 
-    await folderService.restoreBatch(folder.deletedBatchId);
+    await restoreBatch(folder.deletedBatchId);
 
     return ApiResponse.success(res, "Folder restored", { deletedBatchId: folder.deletedBatchId });
 }

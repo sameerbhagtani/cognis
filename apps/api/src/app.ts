@@ -25,7 +25,8 @@ export default function createServerApplication(): Application {
     // Must stay ahead of express.json(): Better Auth reads the raw request body.
     app.all("/api/auth/*splat", toNodeHandler(auth));
 
-    app.use(express.json());
+    // Notes are free-form text; body-parser's 100kb default is low for a long one.
+    app.use(express.json({ limit: "1mb" }));
     app.use(cookieParser());
 
     app.get("/api/health", (_req, res) => {

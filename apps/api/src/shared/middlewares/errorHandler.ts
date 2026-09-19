@@ -27,6 +27,15 @@ export default function errorHandler(
         });
     }
 
+    // Oversized bodies arrive as an http-errors 413; without this a long note
+    // would be reported as a server fault.
+    if ("type" in err && err.type === "entity.too.large") {
+        return res.status(413).json({
+            success: false,
+            message: "Request body too large",
+        });
+    }
+
     // treeifyError over flattenError: flatten drops everything to formErrors on
     // union schemas, which would leave the client with no usable detail.
     if (err instanceof ZodError) {
