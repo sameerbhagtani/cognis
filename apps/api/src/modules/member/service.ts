@@ -23,7 +23,7 @@ export async function listMembers(workspaceId: string) {
 
 export async function findUserByEmail(email: string) {
     const [user] = await db
-        .select({ id: schemas.user.id })
+        .select({ id: schemas.user.id, email: schemas.user.email })
         .from(schemas.user)
         .where(eq(schemas.user.email, email))
         .limit(1);

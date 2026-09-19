@@ -1,6 +1,8 @@
 import * as memberService from "./service.js";
 import { addMemberSchema, updateMemberRoleSchema } from "./validation.js";
 
+import { getWorkspaceById } from "../workspace/service.js";
+import { sendWorkspaceInviteEmail } from "../../lib/email/index.js";
 import { getWorkspaceMembership } from "../../shared/services/workspaceAccess.js";
 import { emitToWorkspace, removeUserFromWorkspaceRoom } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
@@ -29,6 +31,18 @@ export async function addMember(req: Request<WorkspaceParams>, res: Response) {
     if (existing) throw ApiError.conflict("User is already a member of this workspace");
 
     const member = await memberService.addMember(workspaceId, user.id, role);
+
+    // Fire and forget, after the row is committed: this is how the added user
+    // finds out, since no socket of theirs is in that workspace's room.
+    const workspace = await getWorkspaceById(workspaceId);
+    if (workspace) {
+        sendWorkspaceInviteEmail({
+            to: user.email,
+            workspaceName: workspace.name,
+            invitedByName: req.user.name,
+            role,
+        });
+    }
 
     return ApiResponse.created(res, "Member added", member);
 }

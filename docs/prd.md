@@ -124,6 +124,7 @@ Convention: mutations (create/update/delete/move) go through REST. The server th
 ### Workspace Members
 
 - 'POST /workspaces/:workspaceId/members' - add a member (owner only), body: email + role. Email only, no userId: the client is inviting a person, and it never has a stranger's user id to send anyway. Role is restricted to 'editor' / 'viewer', since promoting to 'owner' would be an ownership transfer, which Phase 1 has no endpoint for.
+    - Sends the added user an email, since that is the only channel that reaches them: they have no socket in the workspace's room and won't until their client joins. It is fired after the row is committed and never awaited — a mail provider outage must not turn a completed add into a failed request, so the failure is logged and the user finds the workspace on their next visit instead.
 - 'GET /workspaces/:workspaceId/members' - list members
 - 'PATCH /workspaces/:workspaceId/members/:memberId' - change role (owner only)
 - 'DELETE /workspaces/:workspaceId/members/:memberId' - remove member (owner only, hard delete, no trash)
@@ -231,4 +232,4 @@ On a container platform, use its own scheduler instead of crontab — a Kubernet
 
 ## Open Questions / To Revisit
 
-- Notifying a user that they have been added to a workspace. There is deliberately no 'member:added' socket event: the people already in the room don't need it, and the one person who does have a reason to care has no socket in that room yet, and won't until their client joins. A per-user channel would be a change to the connection model, so the plan is to send that user an email instead, reusing the Brevo sender already wired up for auth.
+- The workspace invite email links to 'CLIENT_URL' rather than straight to the workspace, because no frontend routes exist yet to link into. Worth replacing with a deep link once they do.
