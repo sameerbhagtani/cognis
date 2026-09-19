@@ -2,10 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { and, asc, db, eq, getColumns, inArray, isNull, schemas, sql } from "@cognis/database";
 
+import { lockWorkspace, type DbOrTx } from "../../shared/services/workspaceLock.js";
 import ApiError from "../../shared/utils/ApiError.js";
-
-type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
-type DbOrTx = typeof db | Tx;
 
 export type Folder = typeof schemas.folder.$inferSelect;
 
@@ -139,7 +137,7 @@ export async function applyFolderUpdate(
     if (parentFolderId === undefined) return writeFolder(db, folder.id, values);
 
     return db.transaction(async (tx) => {
-        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${folder.workspaceId}))`);
+        await lockWorkspace(tx, folder.workspaceId);
 
         if (parentFolderId !== null) {
             const parent = await getLiveFolder(folder.workspaceId, parentFolderId, tx);
@@ -165,11 +163,13 @@ export async function applyFolderUpdate(
  * re-stamped into this batch, which would otherwise resurrect it when this batch
  * is restored.
  */
-export async function softDeleteFolder(folderId: string) {
+export async function softDeleteFolder(workspaceId: string, folderId: string) {
     const deletedBatchId = randomUUID();
     const deletedAt = new Date();
 
     await db.transaction(async (tx) => {
+        await lockWorkspace(tx, workspaceId);
+
         const subtreeIds = await getFolderSubtreeIds(folderId, tx);
 
         await tx
@@ -184,24 +184,4 @@ export async function softDeleteFolder(folderId: string) {
     });
 
     return deletedBatchId;
-}
-
-/**
- * Answers whether a folder blocks restoring `deletedBatchId`. A folder trashed in
- * that same batch is coming back with it, so only a folder trashed under a
- * different batch is an obstacle.
- */
-export async function isFolderTrashedOutsideBatch(folderId: string, deletedBatchId: string) {
-    const [row] = await db
-        .select({
-            deletedAt: schemas.folder.deletedAt,
-            deletedBatchId: schemas.folder.deletedBatchId,
-        })
-        .from(schemas.folder)
-        .where(eq(schemas.folder.id, folderId))
-        .limit(1);
-
-    if (!row?.deletedAt) return false;
-
-    return row.deletedBatchId !== deletedBatchId;
 }

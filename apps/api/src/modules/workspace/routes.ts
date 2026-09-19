@@ -4,6 +4,7 @@ import * as workspaceController from "./controller.js";
 import memberRoutes from "../member/routes.js";
 import { workspaceFolderRoutes } from "../folder/routes.js";
 import { workspaceNoteRoutes } from "../note/routes.js";
+import { workspaceTrashRoutes } from "../trash/routes.js";
 
 import requireWorkspaceOwner from "../../shared/middlewares/requireWorkspaceOwner.js";
 import requireWorkspaceRole from "../../shared/middlewares/requireWorkspaceRole.js";
@@ -21,5 +22,6 @@ router.delete("/:workspaceId", requireWorkspaceOwner, workspaceController.delete
 router.use("/:workspaceId/members", memberRoutes);
 router.use("/:workspaceId/folders", workspaceFolderRoutes);
 router.use("/:workspaceId/notes", workspaceNoteRoutes);
+router.use("/:workspaceId/trash", workspaceTrashRoutes);
 
 export default router;

@@ -65,7 +65,7 @@ export async function deleteFolder(req: Request<FolderParams>, res: Response) {
 
     if (folder.deletedAt) throw ApiError.notFound("Folder not found");
 
-    const deletedBatchId = await folderService.softDeleteFolder(folder.id);
+    const deletedBatchId = await folderService.softDeleteFolder(folder.workspaceId, folder.id);
 
     return ApiResponse.success(res, "Folder moved to trash", { deletedBatchId });
 }
@@ -77,18 +77,9 @@ export async function restoreFolder(req: Request<FolderParams>, res: Response) {
         throw ApiError.badRequest("Folder is not in the trash");
     }
 
-    // Restoring under a still-trashed parent would produce a live folder that no
-    // tree query can reach. A parent inside this same batch is fine: it comes back
-    // in the same restore.
-    if (folder.parentFolderId) {
-        const blocked = await folderService.isFolderTrashedOutsideBatch(
-            folder.parentFolderId,
-            folder.deletedBatchId,
-        );
-        if (blocked) throw ApiError.conflict("Restore the parent folder first");
-    }
-
-    await restoreBatch(folder.deletedBatchId);
+    // restoreBatch owns the orphan check: it has to run under the same lock as
+    // the write, or a concurrent delete lands between them.
+    await restoreBatch(folder.workspaceId, folder.deletedBatchId);
 
     return ApiResponse.success(res, "Folder restored", { deletedBatchId: folder.deletedBatchId });
 }

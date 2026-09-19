@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { and, asc, db, eq, getColumns, isNull, schemas } from "@cognis/database";
 
+import { lockWorkspace } from "../../shared/services/workspaceLock.js";
+
 export type Note = typeof schemas.note.$inferSelect;
 
 export async function getNoteForUser(noteId: string, userId: string) {
@@ -74,13 +76,20 @@ export async function updateNote(
  * deletedBatchId so the trash view can group it and restore it by batch the same
  * way it handles a folder subtree.
  */
-export async function softDeleteNote(noteId: string) {
+export async function softDeleteNote(workspaceId: string, noteId: string) {
     const deletedBatchId = randomUUID();
 
-    await db
-        .update(schemas.note)
-        .set({ deletedAt: new Date(), deletedBatchId })
-        .where(eq(schemas.note.id, noteId));
+    // Locked for the same reason a folder delete is: a restore running alongside
+    // checks whether this note's folder is trashed, and must not see a state this
+    // delete is midway through writing.
+    await db.transaction(async (tx) => {
+        await lockWorkspace(tx, workspaceId);
+
+        await tx
+            .update(schemas.note)
+            .set({ deletedAt: new Date(), deletedBatchId })
+            .where(eq(schemas.note.id, noteId));
+    });
 
     return deletedBatchId;
 }

@@ -2,7 +2,7 @@ import * as noteService from "./service.js";
 import { noteOf } from "./middleware.js";
 import { createNoteSchema, listNotesQuerySchema, updateNoteSchema } from "./validation.js";
 
-import { getLiveFolder, isFolderTrashedOutsideBatch } from "../folder/service.js";
+import { getLiveFolder } from "../folder/service.js";
 import { restoreBatch } from "../../shared/services/trash.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
@@ -71,7 +71,7 @@ export async function deleteNote(req: Request<NoteParams>, res: Response) {
 
     if (note.deletedAt) throw ApiError.notFound("Note not found");
 
-    const deletedBatchId = await noteService.softDeleteNote(note.id);
+    const deletedBatchId = await noteService.softDeleteNote(note.workspaceId, note.id);
 
     return ApiResponse.success(res, "Note moved to trash", { deletedBatchId });
 }
@@ -83,16 +83,9 @@ export async function restoreNote(req: Request<NoteParams>, res: Response) {
         throw ApiError.badRequest("Note is not in the trash");
     }
 
-    // A note trashed on its own keeps its own batch, so its folder can have been
-    // trashed separately afterwards. Restoring into a trashed folder would leave a
-    // live note no folder query can reach. A folder inside this same batch is
-    // fine: the note went down with it and comes back with it.
-    if (note.folderId) {
-        const blocked = await isFolderTrashedOutsideBatch(note.folderId, note.deletedBatchId);
-        if (blocked) throw ApiError.conflict("Restore the parent folder first");
-    }
-
-    await restoreBatch(note.deletedBatchId);
+    // restoreBatch owns the orphan check: it has to run under the same lock as
+    // the write, or a concurrent delete lands between them.
+    await restoreBatch(note.workspaceId, note.deletedBatchId);
 
     return ApiResponse.success(res, "Note restored", { deletedBatchId: note.deletedBatchId });
 }
