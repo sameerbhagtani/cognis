@@ -120,7 +120,7 @@ Convention: mutations (create/update/delete/move) go through REST. The server th
 
 ### Workspace Members
 
-- 'POST /workspaces/:workspaceId/members' - add a member (owner only), body: userId or email + role
+- 'POST /workspaces/:workspaceId/members' - add a member (owner only), body: email + role. Email only, no userId: the client is inviting a person, and it never has a stranger's user id to send anyway. Role is restricted to 'editor' / 'viewer', since promoting to 'owner' would be an ownership transfer, which Phase 1 has no endpoint for.
 - 'GET /workspaces/:workspaceId/members' - list members
 - 'PATCH /workspaces/:workspaceId/members/:memberId' - change role (owner only)
 - 'DELETE /workspaces/:workspaceId/members/:memberId' - remove member (owner only, hard delete, no trash)

@@ -1,15 +1,16 @@
 import { Router } from "express";
 
 import workspaceRoutes from "./workspace/routes.js";
+import { folderRoutes } from "./folder/routes.js";
 
 import requireAuth from "../shared/middlewares/requireAuth.js";
 
 const router = Router();
 
-// Every module route below is authenticated; req.user is typed non-optional on
-// that basis.
+// Every module route below is authenticated; req.user is typed non-optional on that basis.
 router.use(requireAuth);
 
 router.use("/workspaces", workspaceRoutes);
+router.use("/folders", folderRoutes);
 
 export default router;

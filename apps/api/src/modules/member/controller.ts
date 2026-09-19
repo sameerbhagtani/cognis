@@ -19,18 +19,15 @@ export async function listMembers(req: Request<WorkspaceParams>, res: Response) 
 
 export async function addMember(req: Request<WorkspaceParams>, res: Response) {
     const { workspaceId } = req.params;
-    const body = addMemberSchema.parse(req.body);
+    const { email, role } = addMemberSchema.parse(req.body);
 
-    const user = await memberService.findUser(
-        "userId" in body ? { userId: body.userId } : { email: body.email },
-    );
-
+    const user = await memberService.findUserByEmail(email);
     if (!user) throw ApiError.notFound("User not found");
 
     const existing = await getWorkspaceMembership(workspaceId, user.id);
     if (existing) throw ApiError.conflict("User is already a member of this workspace");
 
-    const member = await memberService.addMember(workspaceId, user.id, body.role);
+    const member = await memberService.addMember(workspaceId, user.id, role);
 
     return ApiResponse.created(res, "Member added", member);
 }

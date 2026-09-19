@@ -1,11 +1,18 @@
 import { and, eq, db, schemas } from "@cognis/database";
 import ApiError from "../utils/ApiError.js";
 
+// "owner" | "editor" | "viewer" ... (stays in sync with the database)
 export type WorkspaceRole = (typeof schemas.workspaceMemberRoleEnum.enumValues)[number];
+
+// type representing a row in the workspaceMember table
 export type WorkspaceMembership = typeof schemas.workspaceMember.$inferSelect;
 
+// [ "owner", "editor", "viewer" ... ]
 export const MEMBER_ROLES: WorkspaceRole[] = [...schemas.workspaceMemberRoleEnum.enumValues];
 
+export const WRITE_ROLES: WorkspaceRole[] = ["owner", "editor"];
+
+// Gets the membership record for the user for the concerned workspace
 export async function getWorkspaceMembership(workspaceId: string, userId: string) {
     const [membership] = await db
         .select()

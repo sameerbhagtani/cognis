@@ -21,15 +21,11 @@ export async function listMembers(workspaceId: string) {
         .orderBy(schemas.user.name);
 }
 
-export async function findUser(identifier: { userId: string } | { email: string }) {
+export async function findUserByEmail(email: string) {
     const [user] = await db
         .select({ id: schemas.user.id })
         .from(schemas.user)
-        .where(
-            "userId" in identifier
-                ? eq(schemas.user.id, identifier.userId)
-                : eq(schemas.user.email, identifier.email),
-        )
+        .where(eq(schemas.user.email, email))
         .limit(1);
 
     return user ?? null;

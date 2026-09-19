@@ -2,6 +2,7 @@ import { Router } from "express";
 
 import * as workspaceController from "./controller.js";
 import memberRoutes from "../member/routes.js";
+import { workspaceFolderRoutes } from "../folder/routes.js";
 
 import requireWorkspaceOwner from "../../shared/middlewares/requireWorkspaceOwner.js";
 import requireWorkspaceRole from "../../shared/middlewares/requireWorkspaceRole.js";
@@ -17,5 +18,6 @@ router.patch("/:workspaceId", requireWorkspaceOwner, workspaceController.renameW
 router.delete("/:workspaceId", requireWorkspaceOwner, workspaceController.deleteWorkspace);
 
 router.use("/:workspaceId/members", memberRoutes);
+router.use("/:workspaceId/folders", workspaceFolderRoutes);
 
 export default router;
