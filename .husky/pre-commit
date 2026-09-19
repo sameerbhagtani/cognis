@@ -2,8 +2,4 @@ set -e
 
 pnpm lint
 pnpm check-types
-
-# Formats and re-stages only the files already staged. Running `pnpm format` plus
-# `git add -u` instead would sweep every modified tracked file into the commit,
-# which makes a partial commit impossible.
 pnpm exec lint-staged
