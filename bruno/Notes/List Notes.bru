@@ -1,0 +1,25 @@
+meta {
+  name: List Notes
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/notes
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setVar("noteId", res.body.data[0].id);
+  }
+}
+
+docs {
+  Any member, trashed notes excluded.
+
+  The optional folderId query parameter works like the folder one: omit for the
+  whole workspace, pass an id for that folder, or the literal string null for
+  notes at the root.
+}

@@ -1,0 +1,37 @@
+meta {
+  name: Create Folder
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/folders
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "name": "My Folder",
+    "parentFolderId": null
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("folderId", res.body.data.id);
+  }
+}
+
+docs {
+  owner or editor. parentFolderId null puts the folder at the workspace root;
+  pass a folder id to nest it.
+
+  The parent must be live and in the same workspace, otherwise 404. A folder
+  cannot be created inside something that is in the trash.
+}

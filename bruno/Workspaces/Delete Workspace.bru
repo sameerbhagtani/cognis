@@ -1,0 +1,25 @@
+meta {
+  name: Delete Workspace
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Owner only. Hard delete with no trash step: ON DELETE CASCADE takes every
+  folder, note and membership with it.
+
+  Broadcasts workspace:deleted and then clears the socket room.
+
+  Destructive to a sequential run: every folder after this one depends on
+  workspaceId, so running the collection top to bottom will 404 from here on.
+}

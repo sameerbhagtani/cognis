@@ -1,0 +1,15 @@
+meta {
+  name: Get Workspace
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}
+  body: none
+  auth: none
+}
+
+docs {
+  Includes the caller's role. A non-member gets 404, not 403, so workspace existence is not disclosed.
+}

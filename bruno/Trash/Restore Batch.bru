@@ -1,0 +1,24 @@
+meta {
+  name: Restore Batch
+  type: http
+  seq: 2
+}
+
+post {
+  url: {{baseUrl}}/api/trash/{{deletedBatchId}}/restore
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  owner or editor. The path carries no workspaceId, so the batch identifies its
+  own workspace and the permission check follows from that. An unknown batch and a
+  batch in a workspace you cannot reach both return 404.
+
+  409 carries the same meaning as the per item restores: something in the batch
+  would come back underneath a parent that a different delete left in the trash.
+}

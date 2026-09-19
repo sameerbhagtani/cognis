@@ -1,0 +1,26 @@
+meta {
+  name: Send Verification Email
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/auth/send-verification-email
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "email": "you@example.com"
+  }
+}
+
+docs {
+  Resends the verification mail. Useful when the first one was missed.
+}

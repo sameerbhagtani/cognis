@@ -1,0 +1,25 @@
+meta {
+  name: List Trash
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/trash
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setVar("deletedBatchId", res.body.data[0].deletedBatchId);
+  }
+}
+
+docs {
+  Any member. Trashed folders and notes grouped by the delete action they came
+  from, newest first, so a folder and everything under it reads as the single
+  action it was.
+
+  Sets deletedBatchId from the newest batch.
+}

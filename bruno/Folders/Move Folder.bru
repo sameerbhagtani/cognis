@@ -1,0 +1,33 @@
+meta {
+  name: Move Folder
+  type: http
+  seq: 6
+}
+
+patch {
+  url: {{baseUrl}}/api/folders/{{folderId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "parentFolderId": null
+  }
+}
+
+docs {
+  null moves the folder to the workspace root.
+
+  Moving a folder into itself or into one of its own descendants returns 400. The
+  check runs inside the same transaction as the write, under a workspace lock, so
+  two simultaneous moves cannot form a cycle between them.
+
+  Moving into a trashed folder returns 404, and that check runs before the cycle
+  check.
+}

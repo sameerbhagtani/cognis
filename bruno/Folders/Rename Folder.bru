@@ -1,0 +1,30 @@
+meta {
+  name: Rename Folder
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/folders/{{folderId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "name": "Renamed Folder"
+  }
+}
+
+docs {
+  owner or editor. Send name, parentFolderId, or both.
+
+  A rename emits folder:updated and a move emits folder:moved, because a client
+  patches a label for one and invalidates a subtree for the other. Sending both
+  emits both.
+}

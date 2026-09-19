@@ -1,0 +1,23 @@
+meta {
+  name: Remove Member
+  type: http
+  seq: 4
+}
+
+delete {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Owner only, immediate, no trash step. Removing the owner's own row is refused
+  with 400.
+
+  Broadcasts member:removed and then drops that user's sockets from the room, so
+  the subscription ends with the membership.
+}

@@ -1,0 +1,24 @@
+meta {
+  name: Sign Out
+  type: http
+  seq: 9
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-out
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Clears the session cookie. Everything else in the collection 401s afterwards,
+  which is why this sits last in the folder.
+
+  Running the whole collection from the CLI still reaches this before the other
+  folders, since Auth runs first. Run folders individually, or skip this one, when
+  driving the collection end to end.
+}

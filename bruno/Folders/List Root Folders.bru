@@ -1,0 +1,19 @@
+meta {
+  name: List Root Folders
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/folders
+  body: none
+  auth: none
+}
+
+params:query {
+  parentFolderId: null
+}
+
+docs {
+  The literal string null selects folders with no parent. This is a separate saved request only because that convention is easy to forget.
+}

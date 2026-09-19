@@ -1,0 +1,41 @@
+meta {
+  name: Add Member
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/members
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "email": "{{memberEmail}}",
+    "role": "editor"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("memberId", res.body.data.id);
+  }
+}
+
+docs {
+  Owner only. Identified by email rather than userId, because the inviter never
+  holds a stranger's user id.
+
+  role accepts editor or viewer only. owner would be an ownership transfer, which
+  has no endpoint in this phase, so it fails validation.
+
+  404 means no account exists for that address. 409 means they are already a
+  member. The added user is notified by email, since no socket of theirs is in
+  this workspace's room yet.
+}

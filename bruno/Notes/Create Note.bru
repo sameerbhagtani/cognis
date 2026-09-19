@@ -1,0 +1,37 @@
+meta {
+  name: Create Note
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/notes
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "title": "My Note",
+    "content": "Hello",
+    "folderId": null
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("noteId", res.body.data.id);
+  }
+}
+
+docs {
+  owner or editor. folderId null keeps the note at the workspace root.
+
+  content is optional and may be null. The JSON body limit is 1mb, above which
+  the request returns 413.
+}

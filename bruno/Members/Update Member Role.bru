@@ -1,0 +1,30 @@
+meta {
+  name: Update Member Role
+  type: http
+  seq: 3
+}
+
+patch {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/members/{{memberId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "role": "viewer"
+  }
+}
+
+docs {
+  Owner only, editor or viewer only. Changing the owner's own row is refused with
+  400, which is what keeps a workspace from ending up with no owner.
+
+  Broadcasts member:role_changed so the demoted client stops offering writes that
+  would now 403.
+}

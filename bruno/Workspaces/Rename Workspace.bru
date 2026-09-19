@@ -1,0 +1,26 @@
+meta {
+  name: Rename Workspace
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "name": "Renamed Workspace"
+  }
+}
+
+docs {
+  Owner only, checked against workspace.ownerId. Broadcasts workspace:updated.
+}

@@ -1,0 +1,25 @@
+meta {
+  name: List Workspaces
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setVar("workspaceId", res.body.data[0].id);
+  }
+}
+
+docs {
+  Every workspace the caller belongs to, alphabetical, each carrying the caller's
+  own role so a client can gate edit controls without a second request.
+
+  Sets workspaceId from the first result, so the collection can be run without
+  creating anything.
+}

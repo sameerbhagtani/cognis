@@ -1,0 +1,30 @@
+meta {
+  name: Move Note
+  type: http
+  seq: 5
+}
+
+patch {
+  url: {{baseUrl}}/api/notes/{{noteId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "folderId": null
+  }
+}
+
+docs {
+  null moves the note to the workspace root. The target folder must be live and in
+  the same workspace, otherwise 404.
+
+  note:moved is emitted immediately rather than throttled, since a structural
+  change should not wait behind an autosave window.
+}

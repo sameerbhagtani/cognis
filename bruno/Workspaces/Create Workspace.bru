@@ -1,0 +1,36 @@
+meta {
+  name: Create Workspace
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/workspaces
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "name": "My Workspace"
+  }
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("workspaceId", res.body.data.id);
+  }
+}
+
+docs {
+  The creator becomes owner. The workspace row and the owner's workspace_member
+  row are inserted in one transaction, so ownerId and the owner role cannot
+  diverge.
+
+  Stores workspaceId for the rest of the collection.
+}

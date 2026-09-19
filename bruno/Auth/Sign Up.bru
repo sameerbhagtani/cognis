@@ -1,0 +1,34 @@
+meta {
+  name: Sign Up
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/auth/sign-up/email
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "name": "Test User",
+    "email": "you@example.com",
+    "password": "password123"
+  }
+}
+
+docs {
+  Better Auth serves this, it is not hand written.
+
+  requireEmailVerification is on, so the account is created but cannot sign in
+  until the emailed link is opened. The verification mail is sent automatically.
+
+  In development the verification URL is also printed to the API server log, which
+  is the practical way to get the token without leaving the terminal.
+}

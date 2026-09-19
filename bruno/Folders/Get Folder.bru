@@ -1,0 +1,19 @@
+meta {
+  name: Get Folder
+  type: http
+  seq: 4
+}
+
+get {
+  url: {{baseUrl}}/api/folders/{{folderId}}
+  body: none
+  auth: none
+}
+
+docs {
+  No workspaceId in the path: membership is resolved from the folder's own
+  workspace.
+
+  A folder that does not exist and a folder in someone else's workspace both
+  return 404, so the id space cannot be probed. A malformed uuid returns 400.
+}

@@ -1,0 +1,23 @@
+meta {
+  name: Restore Note
+  type: http
+  seq: 7
+}
+
+post {
+  url: {{baseUrl}}/api/notes/{{noteId}}/restore
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Restores the whole batch this note belongs to. If it went into the trash as part
+  of a folder's cascade, the folder comes back with it.
+
+  409 means its folder was trashed by a separate action and has to be restored
+  first.
+}

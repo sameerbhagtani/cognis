@@ -1,0 +1,22 @@
+meta {
+  name: List Members
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/members
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200) {
+    const other = res.body.data.find((m) => m.role !== "owner");
+    if (other) bru.setVar("memberId", other.id);
+  }
+}
+
+docs {
+  Any member may read this. Sets memberId to the first non-owner member.
+}

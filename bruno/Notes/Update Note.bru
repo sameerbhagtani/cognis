@@ -1,0 +1,32 @@
+meta {
+  name: Update Note
+  type: http
+  seq: 4
+}
+
+patch {
+  url: {{baseUrl}}/api/notes/{{noteId}}
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "title": "Updated Note",
+    "content": "Updated body"
+  }
+}
+
+docs {
+  owner or editor. Send title, content, folderId, or any combination.
+
+  A title or content change emits note:updated, throttled to at most once per
+  second per note so autosave cannot flood viewers. That event deliberately omits
+  content: a long note pushed to every viewer each window is the flood the
+  throttle exists to prevent, so clients holding the note open refetch instead.
+}

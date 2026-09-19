@@ -1,0 +1,24 @@
+meta {
+  name: Restore Folder
+  type: http
+  seq: 8
+}
+
+post {
+  url: {{baseUrl}}/api/folders/{{folderId}}/restore
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Restores the whole batch this folder was trashed in, not just this row.
+
+  400 means it is not in the trash. 409 means something in the batch sits under a
+  parent that a different delete left in the trash; restoring it would produce a
+  row that no tree query returns and no trash view shows, so the parent's batch
+  has to be restored first.
+}

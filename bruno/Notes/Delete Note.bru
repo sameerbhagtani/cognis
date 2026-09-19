@@ -1,0 +1,25 @@
+meta {
+  name: Delete Note
+  type: http
+  seq: 6
+}
+
+delete {
+  url: {{baseUrl}}/api/notes/{{noteId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+script:post-response {
+  if (res.status === 200) {
+    bru.setVar("deletedBatchId", res.body.data.deletedBatchId);
+  }
+}
+
+docs {
+  Soft delete. A note has no children, but it still gets its own deletedBatchId so the trash groups and restores it the same way as a folder subtree.
+}

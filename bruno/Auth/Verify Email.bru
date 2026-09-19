@@ -1,0 +1,24 @@
+meta {
+  name: Verify Email
+  type: http
+  seq: 5
+}
+
+get {
+  url: {{baseUrl}}/api/auth/verify-email
+  body: none
+  auth: none
+}
+
+params:query {
+  token: paste-token-from-email
+}
+
+docs {
+  Verifies the address and, because autoSignInAfterVerification is on, signs the
+  user in as part of the same response.
+
+  The token is the query parameter in the emailed link. Brevo click tracking
+  rewrites that link, so take the token from the API server log in development
+  rather than from the mail.
+}

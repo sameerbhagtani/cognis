@@ -1,0 +1,25 @@
+meta {
+  name: List Folders
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/folders
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setVar("folderId", res.body.data[0].id);
+  }
+}
+
+docs {
+  Any member. Trashed folders are never included.
+
+  The optional parentFolderId query parameter filters by parent. Omit it for the
+  whole workspace, pass a folder id for that folder's children, or the literal
+  string null for root level folders only.
+}
