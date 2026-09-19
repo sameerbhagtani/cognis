@@ -2,6 +2,7 @@ import * as memberService from "./service.js";
 import { addMemberSchema, updateMemberRoleSchema } from "./validation.js";
 
 import { getWorkspaceMembership } from "../../shared/services/workspaceAccess.js";
+import { emitToWorkspace, removeUserFromWorkspaceRoom } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 import parseUuidParam from "../../shared/utils/parseUuidParam.js";
@@ -48,6 +49,10 @@ export async function updateMemberRole(req: Request<MemberParams>, res: Response
 
     const updated = await memberService.updateMemberRole(memberId, role);
 
+    // Clients cache their role to decide whether to render edit controls, so a
+    // demotion has to reach them or they keep offering writes that now 403.
+    emitToWorkspace(workspaceId, "member:role_changed", { userId: member.userId, role });
+
     return ApiResponse.success(res, "Member role updated", updated);
 }
 
@@ -63,6 +68,12 @@ export async function removeMember(req: Request<MemberParams>, res: Response) {
     }
 
     await memberService.removeMember(memberId);
+
+    emitToWorkspace(workspaceId, "member:removed", { userId: member.userId });
+
+    // Announced first, then evicted: the removed user's own client needs the event
+    // to react, and it stops receiving anything the moment it leaves the room.
+    await removeUserFromWorkspaceRoom(workspaceId, member.userId);
 
     return ApiResponse.noContent(res);
 }

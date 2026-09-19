@@ -44,22 +44,31 @@ async function isBatchRestoreBlocked(tx: Tx, deletedBatchId: string) {
  * A batch spans folders and notes, so both tables are always cleared.
  */
 export async function restoreBatch(workspaceId: string, deletedBatchId: string) {
-    await db.transaction(async (tx) => {
+    return db.transaction(async (tx) => {
         await lockWorkspace(tx, workspaceId);
 
         if (await isBatchRestoreBlocked(tx, deletedBatchId)) {
             throw ApiError.conflict("Restore the parent folder first");
         }
 
-        await tx
+        const folders = await tx
             .update(schemas.folder)
             .set({ deletedAt: null, deletedBatchId: null })
-            .where(eq(schemas.folder.deletedBatchId, deletedBatchId));
+            .where(eq(schemas.folder.deletedBatchId, deletedBatchId))
+            .returning({ id: schemas.folder.id });
 
-        await tx
+        const notes = await tx
             .update(schemas.note)
             .set({ deletedAt: null, deletedBatchId: null })
-            .where(eq(schemas.note.deletedBatchId, deletedBatchId));
+            .where(eq(schemas.note.deletedBatchId, deletedBatchId))
+            .returning({ id: schemas.note.id });
+
+        // Returned so the caller can broadcast only the events a batch actually
+        // warrants, instead of announcing folder and note changes for both.
+        return {
+            folderIds: folders.map((folder) => folder.id),
+            noteIds: notes.map((note) => note.id),
+        };
     });
 }
 

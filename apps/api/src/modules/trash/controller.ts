@@ -2,6 +2,7 @@ import * as trashService from "./service.js";
 
 import { assertWorkspaceRole, WRITE_ROLES } from "../../shared/services/workspaceAccess.js";
 import { findBatchWorkspaceId, restoreBatch } from "../../shared/services/trash.js";
+import { emitBatchRestored } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 import parseUuidParam from "../../shared/utils/parseUuidParam.js";
@@ -28,7 +29,9 @@ export async function restoreTrashBatch(req: Request<BatchParams>, res: Response
 
     await assertWorkspaceRole(workspaceId, req.user.id, WRITE_ROLES);
 
-    await restoreBatch(workspaceId, deletedBatchId);
+    const restored = await restoreBatch(workspaceId, deletedBatchId);
+
+    emitBatchRestored(workspaceId, deletedBatchId, restored);
 
     return ApiResponse.success(res, "Trash batch restored", { deletedBatchId });
 }

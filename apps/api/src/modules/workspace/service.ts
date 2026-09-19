@@ -1,5 +1,7 @@
 import { db, eq, getColumns, schemas } from "@cognis/database";
 
+export type Workspace = typeof schemas.workspace.$inferSelect;
+
 export async function createWorkspace(ownerId: string, name: string) {
     return db.transaction(async (tx) => {
         const [created] = await tx.insert(schemas.workspace).values({ ownerId, name }).returning();

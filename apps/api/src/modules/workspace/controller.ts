@@ -1,6 +1,7 @@
 import * as workspaceService from "./service.js";
 import { createWorkspaceSchema, renameWorkspaceSchema } from "./validation.js";
 
+import { clearWorkspaceRoom, emitToWorkspace } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
@@ -38,11 +39,20 @@ export async function renameWorkspace(req: Request<WorkspaceParams>, res: Respon
 
     const workspace = await workspaceService.renameWorkspace(req.params.workspaceId, name);
 
+    emitToWorkspace(workspace.id, "workspace:updated", workspace);
+
     return ApiResponse.success(res, "Workspace renamed", workspace);
 }
 
 export async function deleteWorkspace(req: Request<WorkspaceParams>, res: Response) {
-    await workspaceService.deleteWorkspace(req.params.workspaceId);
+    const { workspaceId } = req.params;
+
+    await workspaceService.deleteWorkspace(workspaceId);
+
+    // Announced before the room is torn down, for the same reason a removed
+    // member is: the event is the last thing that room will ever deliver.
+    emitToWorkspace(workspaceId, "workspace:deleted", { id: workspaceId });
+    await clearWorkspaceRoom(workspaceId);
 
     return ApiResponse.noContent(res);
 }

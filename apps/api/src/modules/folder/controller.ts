@@ -3,6 +3,7 @@ import { folderOf } from "./middleware.js";
 import { createFolderSchema, listFoldersQuerySchema, updateFolderSchema } from "./validation.js";
 
 import { restoreBatch } from "../../shared/services/trash.js";
+import { emitBatchRestored, emitToWorkspace } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
@@ -21,6 +22,8 @@ export async function createFolder(req: Request<WorkspaceParams>, res: Response)
     }
 
     const folder = await folderService.createFolder(workspaceId, name, parentFolderId ?? null);
+
+    emitToWorkspace(workspaceId, "folder:created", folder);
 
     return ApiResponse.created(res, "Folder created", folder);
 }
@@ -57,6 +60,17 @@ export async function updateFolder(req: Request<FolderParams>, res: Response) {
         ...(parentFolderId !== undefined && { parentFolderId }),
     });
 
+    // A rename and a move are separate events because clients act on them
+    // differently: one patches a label, the other invalidates a subtree. A request
+    // doing both emits both.
+    if (name !== undefined) emitToWorkspace(folder.workspaceId, "folder:updated", updated);
+    if (parentFolderId !== undefined) {
+        emitToWorkspace(folder.workspaceId, "folder:moved", {
+            id: updated.id,
+            parentFolderId: updated.parentFolderId,
+        });
+    }
+
     return ApiResponse.success(res, "Folder updated", updated);
 }
 
@@ -66,6 +80,8 @@ export async function deleteFolder(req: Request<FolderParams>, res: Response) {
     if (folder.deletedAt) throw ApiError.notFound("Folder not found");
 
     const deletedBatchId = await folderService.softDeleteFolder(folder.workspaceId, folder.id);
+
+    emitToWorkspace(folder.workspaceId, "folder:deleted", { id: folder.id, deletedBatchId });
 
     return ApiResponse.success(res, "Folder moved to trash", { deletedBatchId });
 }
@@ -79,7 +95,9 @@ export async function restoreFolder(req: Request<FolderParams>, res: Response) {
 
     // restoreBatch owns the orphan check: it has to run under the same lock as
     // the write, or a concurrent delete lands between them.
-    await restoreBatch(folder.workspaceId, folder.deletedBatchId);
+    const restored = await restoreBatch(folder.workspaceId, folder.deletedBatchId);
+
+    emitBatchRestored(folder.workspaceId, folder.deletedBatchId, restored);
 
     return ApiResponse.success(res, "Folder restored", { deletedBatchId: folder.deletedBatchId });
 }

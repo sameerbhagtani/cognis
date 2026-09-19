@@ -161,6 +161,13 @@ Convention: mutations (create/update/delete/move) go through REST. The server th
 
 ### Server to client events
 
+Workspace events:
+
+- 'workspace:updated' (rename, payload is the workspace row)
+- 'workspace:deleted' (payload includes 'id'; the room is torn down straight after, so this is the last thing it delivers)
+
+There is deliberately no 'workspace:created': the creator is the only member at that point, so there is nobody to broadcast to.
+
 Structural events (folder tree changes):
 
 - 'folder:created'
@@ -182,16 +189,21 @@ Member events:
 - 'member:role_changed' (payload includes 'userId' + the new 'role')
 - 'member:removed' (payload includes 'userId')
 
+Member payloads stay thin on purpose, carrying ids rather than user records, so clients refetch the member list on any of them.
+
 ### Important considerations
 
 - 'note:updated' needs debouncing/throttling on the emit side. If content updates are saved on every keystroke or every few seconds, broadcasting on every single write will flood viewers with events, batch or throttle the broadcast (e.g. emit at most once every N ms per note), the underlying REST save can still happen more often if you want autosave granularity, the broadcast just needs to be coarser.
 - Since Phase 1 has no CRDT and no real concurrent-editing support, if two editors somehow write to the same note near-simultaneously it's last-write-wins at the DB level, the socket layer doesn't need to solve this, it's just out of scope for now.
 - A moved or deleted folder should imply its descendants moved/deleted too on the client's tree view, decide whether the socket event payload includes the full list of affected descendant ids, or whether the client just refetches the subtree when it gets the event. Cheaper to just have the client refetch on 'folder:moved' / 'folder:deleted' rather than serializing the whole affected subtree into the event.
 - The member events exist because the client caches the current user's role (returned by 'GET /workspaces' and 'GET /workspaces/:workspaceId') to decide whether to render edit controls. Without them, an owner demoting an editor to viewer leaves that client showing edit controls until it refetches, and its writes start failing with 403s. Client-side role checks are UX only, the server re-checks the role on every mutation regardless.
-- 'member:removed' should also force the removed user out of the 'workspace:{workspaceId}' room, otherwise they keep receiving broadcasts for a workspace they no longer belong to.
+- 'member:removed' should also force the removed user out of the 'workspace:{workspaceId}' room, otherwise they keep receiving broadcasts for a workspace they no longer belong to. 'workspace:deleted' clears the whole room for the same reason. Both are emitted before the eviction, since the event is the last thing that room will ever deliver.
+- 'note:updated' carries no 'content'. It is the one event autosave fires, and a long note pushed to every viewer on every throttle window is the flood this section warns about. It sends 'id', 'title', 'folderId' and 'updatedAt'; a client holding the note open refetches, the same trade already made for 'folder:moved'.
+- A rename and a move are separate events because clients act on them differently, one patches a label and the other invalidates a subtree. A request doing both emits both.
+- Events are emitted only after the transaction commits. Broadcasting from inside one would announce a change that a rollback then erases, leaving every other client showing something that never happened.
 
 ---
 
 ## Open Questions / To Revisit
 
-_(add here as they come up)_
+- Notifying a user that they have been added to a workspace. There is deliberately no 'member:added' socket event: the people already in the room don't need it, and the one person who does have a reason to care has no socket in that room yet, and won't until their client joins. A per-user channel would be a change to the connection model, so the plan is to send that user an email instead, reusing the Brevo sender already wired up for auth.

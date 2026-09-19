@@ -2,6 +2,7 @@ import http from "node:http";
 
 import { db } from "@cognis/database";
 import createServerApplication from "./app.js";
+import { createSocketServer } from "./realtime/server.js";
 
 import env from "./shared/config/env.js";
 
@@ -11,6 +12,8 @@ async function main() {
         console.log("✅ Database connected");
 
         const server = http.createServer(createServerApplication());
+        createSocketServer(server);
+
         server.listen(env.PORT, () => {
             console.log(`✅ Server started on PORT: ${env.PORT}`);
         });

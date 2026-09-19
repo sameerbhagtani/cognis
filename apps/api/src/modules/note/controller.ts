@@ -4,6 +4,7 @@ import { createNoteSchema, listNotesQuerySchema, updateNoteSchema } from "./vali
 
 import { getLiveFolder } from "../folder/service.js";
 import { restoreBatch } from "../../shared/services/trash.js";
+import { emitBatchRestored, emitNoteUpdated, emitToWorkspace } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
@@ -27,6 +28,8 @@ export async function createNote(req: Request<WorkspaceParams>, res: Response) {
         title,
         content: content ?? null,
     });
+
+    emitToWorkspace(workspaceId, "note:created", note);
 
     return ApiResponse.created(res, "Note created", note);
 }
@@ -63,6 +66,24 @@ export async function updateNote(req: Request<NoteParams>, res: Response) {
         ...(folderId !== undefined && { folderId }),
     });
 
+    // Only the edit is throttled; a move is a one-off structural change that
+    // shouldn't wait behind an autosave window.
+    if (title !== undefined || content !== undefined) {
+        emitNoteUpdated(note.workspaceId, {
+            id: updated.id,
+            title: updated.title,
+            folderId: updated.folderId,
+            updatedAt: updated.updatedAt,
+        });
+    }
+
+    if (folderId !== undefined) {
+        emitToWorkspace(note.workspaceId, "note:moved", {
+            id: updated.id,
+            folderId: updated.folderId,
+        });
+    }
+
     return ApiResponse.success(res, "Note updated", updated);
 }
 
@@ -72,6 +93,8 @@ export async function deleteNote(req: Request<NoteParams>, res: Response) {
     if (note.deletedAt) throw ApiError.notFound("Note not found");
 
     const deletedBatchId = await noteService.softDeleteNote(note.workspaceId, note.id);
+
+    emitToWorkspace(note.workspaceId, "note:deleted", { id: note.id, deletedBatchId });
 
     return ApiResponse.success(res, "Note moved to trash", { deletedBatchId });
 }
@@ -85,7 +108,9 @@ export async function restoreNote(req: Request<NoteParams>, res: Response) {
 
     // restoreBatch owns the orphan check: it has to run under the same lock as
     // the write, or a concurrent delete lands between them.
-    await restoreBatch(note.workspaceId, note.deletedBatchId);
+    const restored = await restoreBatch(note.workspaceId, note.deletedBatchId);
+
+    emitBatchRestored(note.workspaceId, note.deletedBatchId, restored);
 
     return ApiResponse.success(res, "Note restored", { deletedBatchId: note.deletedBatchId });
 }
