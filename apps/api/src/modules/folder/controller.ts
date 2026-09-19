@@ -50,20 +50,9 @@ export async function updateFolder(req: Request<FolderParams>, res: Response) {
 
     if (folder.deletedAt) throw ApiError.notFound("Folder not found");
 
-    if (parentFolderId !== undefined && parentFolderId !== null) {
-        const parent = await folderService.getLiveFolder(folder.workspaceId, parentFolderId);
-        if (!parent) throw ApiError.notFound("Parent folder not found");
-
-        // A move is the only way to introduce a cycle; creation can't, since a new
-        // folder has no descendants. An undetected cycle would hang every recursive
-        // CTE that walks this tree.
-        const subtreeIds = await folderService.getFolderSubtreeIds(folder.id);
-        if (subtreeIds.includes(parentFolderId)) {
-            throw ApiError.badRequest("Cannot move a folder into itself or one of its descendants");
-        }
-    }
-
-    const updated = await folderService.updateFolder(folder.id, {
+    // The parent check and the cycle check live in the service, because a move has
+    // to validate and write in one transaction to stay safe under concurrency.
+    const updated = await folderService.applyFolderUpdate(folder, {
         ...(name !== undefined && { name }),
         ...(parentFolderId !== undefined && { parentFolderId }),
     });

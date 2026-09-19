@@ -2,6 +2,8 @@ import { randomUUID } from "node:crypto";
 
 import { and, asc, db, eq, getColumns, inArray, isNull, schemas, sql } from "@cognis/database";
 
+import ApiError from "../../shared/utils/ApiError.js";
+
 type Tx = Parameters<Parameters<typeof db.transaction>[0]>[0];
 type DbOrTx = typeof db | Tx;
 
@@ -10,16 +12,20 @@ export type Folder = typeof schemas.folder.$inferSelect;
 /**
  * Returns the folder plus every descendant id, including soft-deleted rows: a
  * trashed folder still carries a parentFolderId, so it's structurally part of the
- * tree and a cycle through it would still hang a recursive CTE.
+ * tree and a cycle through it would still be reachable.
  *
  * Serves both the soft-delete cascade and the move cycle check, which is why the
  * root id is included — "move into itself" falls out of the same containment test.
+ *
+ * UNION rather than UNION ALL: results are identical for a tree, where every node
+ * is reached exactly once, but if a cycle ever did exist UNION terminates on the
+ * duplicate while UNION ALL would spin until the query is killed.
  */
 export async function getFolderSubtreeIds(folderId: string, executor: DbOrTx = db) {
     const result = await executor.execute(sql`
         WITH RECURSIVE subtree AS (
             SELECT id FROM folder WHERE id = ${folderId}
-            UNION ALL
+            UNION
             SELECT child.id FROM folder child JOIN subtree ON child.parent_folder_id = subtree.id
         )
         SELECT id FROM subtree
@@ -48,8 +54,8 @@ export async function getFolderForUser(folderId: string, userId: string) {
     return row ?? null;
 }
 
-export async function getLiveFolder(workspaceId: string, folderId: string) {
-    const [folder] = await db
+export async function getLiveFolder(workspaceId: string, folderId: string, executor: DbOrTx = db) {
+    const [folder] = await executor
         .select()
         .from(schemas.folder)
         .where(
@@ -98,17 +104,59 @@ export async function createFolder(
     return created;
 }
 
-export async function updateFolder(
+async function writeFolder(
+    executor: DbOrTx,
     folderId: string,
     values: { name?: string; parentFolderId?: string | null },
 ) {
-    const [updated] = await db
+    const [updated] = await executor
         .update(schemas.folder)
         .set(values)
         .where(eq(schemas.folder.id, folderId))
         .returning();
 
     return updated;
+}
+
+/**
+ * A rename can't create a cycle, so it writes directly. A move has to validate
+ * and write atomically, because the check reads rows that a concurrent move is
+ * about to change.
+ *
+ * Row locks don't help: two moves that would form a cycle (X under Y, Y under X)
+ * write disjoint rows and never contend. The shared thing is the workspace, so
+ * moves take a transaction-scoped advisory lock on it. Uncontended that costs
+ * nothing, it blocks no reads, and it releases on commit or rollback without any
+ * retry logic — unlike SERIALIZABLE, which would surface as an error the caller
+ * has to replay.
+ */
+export async function applyFolderUpdate(
+    folder: Folder,
+    values: { name?: string; parentFolderId?: string | null },
+) {
+    const { parentFolderId } = values;
+
+    if (parentFolderId === undefined) return writeFolder(db, folder.id, values);
+
+    return db.transaction(async (tx) => {
+        await tx.execute(sql`SELECT pg_advisory_xact_lock(hashtext(${folder.workspaceId}))`);
+
+        if (parentFolderId !== null) {
+            const parent = await getLiveFolder(folder.workspaceId, parentFolderId, tx);
+            if (!parent) throw ApiError.notFound("Parent folder not found");
+
+            // Walked inside the lock, so it sees every move that has committed and
+            // excludes any that is still in flight.
+            const subtreeIds = await getFolderSubtreeIds(folder.id, tx);
+            if (subtreeIds.includes(parentFolderId)) {
+                throw ApiError.badRequest(
+                    "Cannot move a folder into itself or one of its descendants",
+                );
+            }
+        }
+
+        return writeFolder(tx, folder.id, values);
+    });
 }
 
 /**
