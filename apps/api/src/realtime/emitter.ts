@@ -1,4 +1,11 @@
-import { workspaceRoom, type WorkspaceEvents, type WorkspaceEventName } from "./events.js";
+import {
+    chatRoom,
+    workspaceRoom,
+    type ChatEventName,
+    type ChatEvents,
+    type WorkspaceEventName,
+    type WorkspaceEvents,
+} from "./events.js";
 import { throttleByKey } from "./throttle.js";
 
 import type { Server } from "socket.io";
@@ -26,6 +33,18 @@ export function emitToWorkspace<E extends WorkspaceEventName>(
     payload: WorkspaceEvents[E],
 ) {
     io?.to(workspaceRoom(workspaceId)).emit(event, payload);
+}
+
+/**
+ * Chat events go to one conversation's room, never the workspace — chats are
+ * private to the person who opened them.
+ */
+export function emitToChat<E extends ChatEventName>(
+    chatId: string,
+    event: E,
+    payload: ChatEvents[E],
+) {
+    io?.to(chatRoom(chatId)).emit(event, payload);
 }
 
 /**

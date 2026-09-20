@@ -2,13 +2,14 @@ import { Server } from "socket.io";
 import { RateLimiterMemory, RateLimiterRes } from "rate-limiter-flexible";
 import { z } from "zod";
 
-import { workspaceRoom } from "./events.js";
+import { chatRoom, workspaceRoom } from "./events.js";
 import { setSocketServer } from "./emitter.js";
 
 import { auth } from "../lib/auth.js";
 import env from "../shared/config/env.js";
 import { RATE_LIMITS, rateLimitEnabled } from "../shared/config/rateLimit.js";
 import { getWorkspaceMembership } from "../shared/services/workspaceAccess.js";
+import { getChatForUser } from "../modules/chat/service.js";
 
 import type { Server as HttpServer } from "node:http";
 
@@ -118,6 +119,44 @@ export function createSocketServer(httpServer: HttpServer) {
                 if (!membership) return { ok: false, error: "Workspace not found" };
 
                 await socket.join(workspaceRoom(workspaceId));
+
+                return { ok: true };
+            }),
+        );
+
+        // Same shape as workspace:join, and checked just as hard. A chat is
+        // private to whoever made it, so the room is gated on ownership as well
+        // as on still belonging to the workspace it lives in.
+        socket.on(
+            "chat:join",
+            handleRoomRequest("chat:join", async (chatId) => {
+                if (rateLimitEnabled) {
+                    try {
+                        await joinLimiter.consume(socket.id);
+                    } catch (err) {
+                        if (err instanceof Error) throw err;
+
+                        const retryAfter = Math.ceil((err as RateLimiterRes).msBeforeNext / 1000);
+
+                        return { ok: false, error: `Too many joins, retry in ${retryAfter}s` };
+                    }
+                }
+
+                const row = await getChatForUser(chatId, socket.data.userId);
+                if (!row || row.chat.userId !== socket.data.userId) {
+                    return { ok: false, error: "Chat not found" };
+                }
+
+                await socket.join(chatRoom(chatId));
+
+                return { ok: true };
+            }),
+        );
+
+        socket.on(
+            "chat:leave",
+            handleRoomRequest("chat:leave", async (chatId) => {
+                await socket.leave(chatRoom(chatId));
 
                 return { ok: true };
             }),

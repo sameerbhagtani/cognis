@@ -1,7 +1,10 @@
+import { randomUUID } from "node:crypto";
+
 import * as chatService from "./service.js";
 import { chatOf } from "./middleware.js";
 import { createChatSchema, sendMessageSchema } from "./validation.js";
 
+import { generateAssistantReply } from "../../shared/services/chatCompletion.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
 import type { Request, Response } from "express";
@@ -37,11 +40,17 @@ export async function deleteChat(req: Request<ChatParams>, res: Response) {
 }
 
 /**
- * Records the question. Generating the answer arrives with the streaming work —
- * until then this persists the turn and names the chat after it.
+ * Records the question and starts the answer.
  *
- * The budget guard runs before this in the route, so nothing is written for a
- * request that could not have been answered anyway.
+ * The reply is not awaited. It streams to the chat's room over the socket and
+ * is saved when it finishes, so this responds as soon as the question is
+ * stored rather than holding a request open for the length of a generation.
+ *
+ * The assistant's message id is chosen here and returned, so the client can
+ * follow the stream for a message that does not exist in the database yet.
+ *
+ * The budget guard runs before this in the route, so nothing is written or
+ * spent for a request that could not have been answered anyway.
  */
 export async function sendMessage(req: Request<ChatParams>, res: Response) {
     const chat = chatOf(req);
@@ -61,5 +70,18 @@ export async function sendMessage(req: Request<ChatParams>, res: Response) {
         await chatService.renameChat(chat.id, chatService.titleFromMessage(content));
     }
 
-    return ApiResponse.created(res, "Message sent", message);
+    const assistantMessageId = randomUUID();
+
+    // Deliberately not awaited, and it never rejects — every failure inside
+    // reaches the client as a chat:error rather than as a rejected request that
+    // has already been answered.
+    void generateAssistantReply({
+        chatId: chat.id,
+        workspaceId: chat.workspaceId,
+        userId: req.user.id,
+        assistantMessageId,
+        question: content,
+    });
+
+    return ApiResponse.created(res, "Message sent", { message, assistantMessageId });
 }

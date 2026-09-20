@@ -72,6 +72,9 @@ export type AppendMessageInput = {
     role: MessageRole;
     content: string;
     citedNoteIds?: string[] | null;
+    /** Chosen up front for an assistant reply, so the client can follow the
+     *  stream for a message that does not exist in the database yet. */
+    id?: string;
 };
 
 /**
@@ -82,6 +85,7 @@ export async function appendMessage(input: AppendMessageInput, executor: DbOrTx 
     const [created] = await executor
         .insert(schemas.message)
         .values({
+            ...(input.id ? { id: input.id } : {}),
             chatId: input.chatId,
             role: input.role,
             content: input.content,

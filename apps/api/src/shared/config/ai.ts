@@ -73,6 +73,14 @@ export const CHAT = {
      */
     maxOutputTokens: 800,
 
+    /**
+     * Below this there is no point starting. The cap on an answer is what bounds
+     * overshoot, but an answer capped to a handful of tokens comes back empty or
+     * cut mid-word — and the input has been paid for either way. A clear refusal
+     * is worth more to the user than a blank message they were charged for.
+     */
+    minOutputTokens: 64,
+
     maxHistoryTurns: 10,
     maxHistoryTokens: 2_000,
 

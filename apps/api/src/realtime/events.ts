@@ -8,6 +8,15 @@ export function workspaceRoom(workspaceId: string) {
 }
 
 /**
+ * A room per chat rather than per user, so several devices open on the same
+ * conversation all follow the stream while chats nobody is looking at cost
+ * nothing to deliver.
+ */
+export function chatRoom(chatId: string) {
+    return `chat:${chatId}`;
+}
+
+/**
  * Payloads stay deliberately thin where the client would refetch anyway. A move
  * or a delete changes a whole subtree, and a restore a whole batch, so sending
  * the affected ids is cheaper than serializing the subtree into every message.
@@ -37,3 +46,26 @@ export type WorkspaceEvents = {
 };
 
 export type WorkspaceEventName = keyof WorkspaceEvents;
+
+/**
+ * Sent to one chat's room while an answer is generated.
+ *
+ * The stream is a convenience, not the record. The assistant's message is saved
+ * whether or not anyone is listening, so a client that misses these — a dropped
+ * connection, a phone that slept — reloads the chat and finds the finished
+ * message waiting.
+ */
+export type ChatEvents = {
+    "chat:message_started": { chatId: string; messageId: string };
+    "chat:token": { chatId: string; messageId: string; delta: string };
+    "chat:message_completed": {
+        chatId: string;
+        messageId: string;
+        content: string;
+        citedNoteIds: string[];
+        truncated: boolean;
+    };
+    "chat:error": { chatId: string; messageId: string; message: string };
+};
+
+export type ChatEventName = keyof ChatEvents;

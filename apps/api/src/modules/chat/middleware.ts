@@ -1,5 +1,7 @@
 import { getChatForUser, type Chat } from "./service.js";
 
+import { maxOutputTokensFor } from "../../lib/ai/chat.js";
+import { CHAT } from "../../shared/config/ai.js";
 import { checkBudget, nextBudgetReleaseAt } from "../../shared/services/aiUsage.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import parseUuidParam from "../../shared/utils/parseUuidParam.js";
@@ -50,7 +52,14 @@ export default async function requireChatAccess(
 export async function requireChatBudget(req: Request, res: Response, next: NextFunction) {
     const verdict = await checkBudget(req.user.id, "completion");
 
-    if (verdict.allowed) return next();
+    // Not just "is there anything left", but "is there enough left to be worth
+    // spending". A few micro-dollars buys an answer of a few tokens, which comes
+    // back empty or cut mid-word after the input has already been paid for.
+    const affordableOutput = maxOutputTokensFor(
+        Math.max(0, verdict.limitMicros - verdict.spentMicros),
+    );
+
+    if (verdict.allowed && affordableOutput >= CHAT.minOutputTokens) return next();
 
     if (verdict.scope === "global") {
         throw ApiError.tooManyRequests(

@@ -88,6 +88,8 @@ This keeps Phase 1's rule intact — **clients never write over the socket** —
 
 **The stream is a convenience, not the source of truth.** The assistant's message is saved server-side when generation finishes, whether or not anyone is listening. A dropped connection mid-answer means the client reloads the chat and finds the complete message waiting.
 
+**Sending a message does not wait for the answer.** The request returns as soon as the question is stored, carrying the id the assistant's message _will_ have, so a client can follow the stream for a row that does not exist yet. Generation then runs detached and never rejects into the request that started it — every failure reaches the client as `chat:error` instead.
+
 ---
 
 ## Data model
@@ -379,7 +381,9 @@ The two ceilings also fail differently on purpose. A personal allowance is the c
 
 Guards run cheapest-first: prove the chat belongs to the caller, then that the traffic is reasonable, then that there is budget. Nothing is written for a request that could not have been answered — a refused message leaves no trace in the conversation.
 
-**One trap:** streamed responses do not report usage by default. The request must explicitly ask for it, or the final chunk arrives without token counts and spending is silently recorded as zero. This gets verified against the installed SDK rather than assumed.
+**One trap, now confirmed:** streamed responses do not report usage unless the request passes `stream_options: { include_usage: true }`. Without it the stream simply ends and every message is metered as costing nothing — the ledger would quietly disagree with the invoice.
+
+**A sliver of allowance is refused, not spent.** Capping the answer bounds the overshoot, but an answer capped to a handful of tokens comes back empty or cut mid-word, and the input has been paid for either way. So the gate asks whether there is enough left to be _worth_ spending, not merely whether anything remains. Below a usable answer it refuses like an exhausted budget, writing nothing and charging nothing. A blank message the user was charged for is worse than being told to wait.
 
 ---
 
