@@ -37,6 +37,8 @@ This describes the Phase 1 backend as it is built, not as it was planned. Everyt
 
 Ids are UUIDs, except on the Better Auth tables, where `user.id` is `text` because Better Auth generates its own ids. Anything referencing `user.id` is therefore also `text`.
 
+The diagram shows `user` only. `session`, `account` and `verification` are Better Auth's alone, are never written to by us, and are left out to keep it readable.
+
 ### Why a workspace has both `ownerId` and an owner role
 
 The two look redundant. They answer different questions:

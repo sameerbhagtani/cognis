@@ -1,8 +1,10 @@
 user [icon: user, color: green] {
-  id UUID PRIMARY KEY
-  name VARCHAR(100) NOT NULL
-  email VARCHAR(255) NOT NULL UNIQUE
-  // ... other better auth fields
+  id TEXT PRIMARY KEY
+
+  name TEXT NOT NULL
+  email TEXT NOT NULL UNIQUE
+  emailVerified BOOLEAN NOT NULL
+  image TEXT
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL
@@ -10,7 +12,7 @@ user [icon: user, color: green] {
 
 workspace [icon: blocks, color: blue] {
   id UUID PRIMARY KEY
-  ownerId UUID NOT NULL ON DELETE CASCADE
+  ownerId TEXT NOT NULL ON DELETE CASCADE
 
   name VARCHAR(50) NOT NULL
 
@@ -24,13 +26,15 @@ workspace_member [icon: user, color: blue] {
   id UUID PRIMARY KEY
 
   workspaceId UUID NOT NULL ON DELETE CASCADE
-  userId UUID NOT NULL ON DELETE CASCADE
-  // UNIQUE (workspaceId, userId)
+  userId TEXT NOT NULL ON DELETE CASCADE
 
   role ENUM('owner', 'editor', 'viewer') NOT NULL
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (userId)
+  // UNIQUE (workspaceId, userId)
 }
 
 workspace.id < workspace_member.workspaceId
@@ -49,6 +53,10 @@ folder [icon: folder, color: yellow] {
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (parentFolderId)
+  // INDEX (workspaceId, deletedAt)
+  // INDEX (deletedBatchId)
 }
 
 workspace.id < folder.workspaceId
@@ -68,6 +76,10 @@ note [icon: document, color: pink] {
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (folderId)
+  // INDEX (workspaceId, deletedAt)
+  // INDEX (deletedBatchId)
 }
 
 workspace.id < note.workspaceId
