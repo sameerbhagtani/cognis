@@ -1,96 +1,82 @@
-import { useEffect, useRef, useState } from "react";
-import { Keyboard, Pressable, StyleSheet, View } from "react-native";
-import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
-import { StatusBar } from "expo-status-bar";
-import { useDrawerStatus } from "expo-router/drawer";
-import { KeyboardStickyView } from "react-native-keyboard-controller";
-import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { ActivityIndicator, StyleSheet, Text, View } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { Redirect, useLocalSearchParams } from "expo-router";
 
+import { useNotes } from "@/lib/notes";
 import useTheme from "@/lib/theme/useTheme";
-import { CognisEditor, EditorToolbar, type CognisEditorHandle } from "@/modules/editor";
+import { useWorkspace } from "@/lib/workspace";
 import { ScreenHeader } from "@/modules/drawer";
 
-import type { EditorCommand } from "@cognis/editor-web/protocol";
+import type { Theme } from "@cognis/types";
 
-// Phase 3 spike content — proves the WebView/CodeMirror bridge end to end
-// before any note is wired up to a real workspace.
-const SPIKE_CONTENT = `# Cognis editor spike
-
-Type on **this line** to see it turn into raw markdown, then move the cursor
-to another line to see it *render* instead.
-
-- a bullet
-- another bullet
-
-> a quote
-
-\`inline code\` too.
-`;
-
-export default function Index() {
+/**
+ * Notes mode's landing spot. There's no note id in hand here, so it sends you to
+ * the one you touched last - a Redirect rather than navigating from an effect,
+ * so there's no render-then-bounce.
+ *
+ * `empty=1` suppresses that: it's how the editor bows out after the open note is
+ * deleted, where jumping straight into an unrelated note would feel like a bug.
+ */
+export default function NotesHome() {
     const { theme } = useTheme();
-    const editorRef = useRef<CognisEditorHandle>(null);
-    const [readOnly, setReadOnly] = useState(false);
-    const insets = useSafeAreaInsets();
-    const drawerStatus = useDrawerStatus();
+    const { activeWorkspace } = useWorkspace();
+    const { notes, isLoading } = useNotes();
+    const { empty } = useLocalSearchParams<{ empty?: string }>();
 
-    // Opening the drawer over a focused editor left the keyboard up and, worse,
-    // left Android's selection handle floating above the drawer - it's a native
-    // popup window, so it isn't clipped by anything drawn over it. Blurring the
-    // WebView is what actually clears it; dismissing the keyboard alone doesn't.
-    useEffect(() => {
-        if (drawerStatus === "open") {
-            Keyboard.dismiss();
-            editorRef.current?.blur();
-        }
-    }, [drawerStatus]);
+    const styles = createStyles(theme);
 
-    function handleCommand(command: EditorCommand) {
-        editorRef.current?.exec(command);
+    const mostRecent = notes.reduce<(typeof notes)[number] | null>(
+        (latest, note) => (latest === null || note.updatedAt > latest.updatedAt ? note : latest),
+        null,
+    );
+
+    if (mostRecent && empty !== "1") {
+        return (
+            <Redirect href={{ pathname: "/note/[noteId]", params: { noteId: mostRecent.id } }} />
+        );
     }
 
+    const canWrite = activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
+    const hasNotes = notes.length > 0;
+
     return (
-        <View style={[styles.container, { backgroundColor: theme.background }]}>
-            <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
-                <StatusBar style="auto" />
-                <ScreenHeader
-                    action={
-                        <Pressable onPress={() => setReadOnly((prev) => !prev)} hitSlop={8}>
-                            <MaterialCommunityIcons
-                                name={readOnly ? "pencil-outline" : "book-open-variant"}
-                                size={22}
-                                color={theme.foreground}
-                            />
-                        </Pressable>
-                    }
-                />
-                <CognisEditor
-                    ref={editorRef}
-                    initialContent={SPIKE_CONTENT}
-                    readOnly={readOnly}
-                    onChange={(content) => console.log("editor changed, length", content.length)}
-                    onLinkPress={(url) => console.log("link pressed", url)}
-                />
-            </SafeAreaView>
-            {/* Sits outside the SafeAreaView on purpose: SafeAreaView's own bottom
-             *  padding would double up with the keyboard-open offset below, since
-             *  KeyboardStickyView translates from its *resting* position — which
-             *  would already be inset.bottom above the true edge — by the
-             *  keyboard's height. The gap between the toolbar and the keyboard was
-             *  exactly that double-counted inset. Passing it through `offset`
-             *  instead keeps it only for the keyboard-closed state, where it's
-             *  still needed to clear the home indicator. */}
-            {!readOnly && (
-                <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
-                    <EditorToolbar onCommand={handleCommand} />
-                </KeyboardStickyView>
-            )}
-        </View>
+        <SafeAreaView style={styles.container} edges={["top", "left", "right"]}>
+            <ScreenHeader />
+
+            <View style={styles.centered}>
+                {isLoading ? (
+                    <ActivityIndicator color={theme.primary} />
+                ) : (
+                    <Text style={styles.empty}>
+                        {hasNotes
+                            ? "Pick a note from the sidebar."
+                            : canWrite
+                              ? "No notes in this workspace yet. Open the sidebar to create one."
+                              : "No notes in this workspace yet."}
+                    </Text>
+                )}
+            </View>
+        </SafeAreaView>
     );
 }
 
-const styles = StyleSheet.create({
-    container: {
-        flex: 1,
-    },
-});
+function createStyles(theme: Theme) {
+    return StyleSheet.create({
+        container: {
+            flex: 1,
+            backgroundColor: theme.background,
+        },
+        centered: {
+            flex: 1,
+            alignItems: "center",
+            justifyContent: "center",
+            padding: 32,
+        },
+        empty: {
+            fontSize: 14,
+            color: theme.foreground,
+            opacity: 0.5,
+            textAlign: "center",
+        },
+    });
+}

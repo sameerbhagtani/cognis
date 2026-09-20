@@ -1,4 +1,4 @@
-import { Compartment, EditorState } from "@codemirror/state";
+import { Annotation, Compartment, EditorState } from "@codemirror/state";
 import { EditorView, keymap } from "@codemirror/view";
 import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
 import { markdown } from "@codemirror/lang-markdown";
@@ -37,6 +37,14 @@ function post(event: EditorEvent) {
 
 const readOnlyCompartment = new Compartment();
 
+/**
+ * Marks a transaction as one we applied ourselves - loading a note, or
+ * reloading it - so the change listener can tell it apart from typing. Without
+ * this, opening a note immediately reports a "change" back to the host, which
+ * autosaves the note's own content straight back to the server.
+ */
+const programmatic = Annotation.define<boolean>();
+
 const mount = document.getElementById("editor");
 if (!mount) throw new Error("missing #editor mount node");
 
@@ -57,9 +65,10 @@ const view = new EditorView({
             readOnlyCompartment.of(readOnlyExtension(false)),
             EditorView.lineWrapping,
             EditorView.updateListener.of((update) => {
-                if (update.docChanged) {
-                    post({ type: "change", payload: { content: update.state.doc.toString() } });
-                }
+                if (!update.docChanged) return;
+                if (update.transactions.some((tr) => tr.annotation(programmatic))) return;
+
+                post({ type: "change", payload: { content: update.state.doc.toString() } });
             }),
         ],
     }),
@@ -69,6 +78,7 @@ window.cognisEditor = {
     setContent(content) {
         view.dispatch({
             changes: { from: 0, to: view.state.doc.length, insert: content },
+            annotations: programmatic.of(true),
         });
     },
     getContent(messageId) {

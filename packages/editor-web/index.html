@@ -16,6 +16,19 @@
             .cm-editor {
                 height: 100%;
             }
+            /*
+             * The package ships `padding-inline: 0.5rem` on the content, which
+             * left every line sitting further left than the note title rendered
+             * above this WebView by React Native. Matching the screen's own 16px
+             * gutter lines them up.
+             *
+             * `html` is there for specificity, not effect: the package's own rule
+             * has the same two classes and is injected into the head after this
+             * block, so an identical selector would lose.
+             */
+            html .atomic-cm-editor .cm-content {
+                padding-inline: 16px;
+            }
         </style>
     </head>
     <body>

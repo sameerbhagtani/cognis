@@ -1,5 +1,6 @@
-import { useState } from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { useRef, useState } from "react";
+import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
+import { Pressable, StyleSheet, Text, View } from "react-native";
 import { useSafeAreaInsets, type EdgeInsets } from "react-native-safe-area-context";
 import { usePathname, useRouter } from "expo-router";
 // expo-router ships its own copy of these navigation types; the ones from
@@ -9,6 +10,7 @@ import type { DrawerContentComponentProps } from "expo-router/drawer";
 
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
+import { FileTree, type FileTreeHandle } from "./FileTree";
 import { ModeSwitch, type DrawerMode } from "./ModeSwitch";
 import { WorkspaceBar } from "./WorkspaceBar";
 
@@ -28,12 +30,15 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
     const insets = useSafeAreaInsets();
     const router = useRouter();
     const pathname = usePathname();
-    const { isLoading, error, refresh, selectWorkspace } = useWorkspace();
+    const { activeWorkspace, isLoading, error, refresh, selectWorkspace } = useWorkspace();
 
     const styles = createStyles(theme, insets);
     const mode = modeFromPathname(pathname);
 
     const [isPopupOpen, setIsPopupOpen] = useState(false);
+    const treeRef = useRef<FileTreeHandle>(null);
+
+    const canWrite = activeWorkspace?.role === "owner" || activeWorkspace?.role === "editor";
 
     function closeDrawer() {
         setIsPopupOpen(false);
@@ -65,20 +70,60 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                 {isLoading ? (
                     <Text style={styles.placeholder}>Loading…</Text>
                 ) : error ? (
-                    <>
+                    <View style={styles.centered}>
                         <Text style={styles.error}>{error}</Text>
                         <Text style={styles.retry} onPress={() => void refresh()}>
                             Try again
                         </Text>
-                    </>
+                    </View>
+                ) : mode === "notes" ? (
+                    <FileTree
+                        ref={treeRef}
+                        onOpenNote={(noteId) => {
+                            closeDrawer();
+                            router.push({ pathname: "/note/[noteId]", params: { noteId } });
+                        }}
+                    />
                 ) : (
-                    <Text style={styles.placeholder}>
-                        {mode === "notes"
-                            ? "Your notes will show up here."
-                            : "Your chats will show up here."}
-                    </Text>
+                    <View style={styles.centered}>
+                        <Text style={styles.placeholder}>Your chats will show up here.</Text>
+                    </View>
                 )}
             </View>
+
+            {mode === "notes" && canWrite && (
+                <View style={styles.createRow}>
+                    <Pressable
+                        onPress={() => treeRef.current?.promptNewNote()}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                            styles.createButton,
+                            { opacity: pressed ? 0.6 : 1 },
+                        ]}
+                    >
+                        <MaterialCommunityIcons
+                            name="note-plus-outline"
+                            size={20}
+                            color={theme.foreground}
+                        />
+                    </Pressable>
+
+                    <Pressable
+                        onPress={() => treeRef.current?.promptNewFolder()}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                            styles.createButton,
+                            { opacity: pressed ? 0.6 : 1 },
+                        ]}
+                    >
+                        <MaterialCommunityIcons
+                            name="folder-plus-outline"
+                            size={20}
+                            color={theme.foreground}
+                        />
+                    </Pressable>
+                </View>
+            )}
 
             <WorkspaceBar
                 isPopupOpen={isPopupOpen}
@@ -103,6 +148,20 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
             paddingTop: Math.max(insets.top, 12),
         },
         middle: {
+            flex: 1,
+        },
+        // Centred icon buttons sitting just above the workspace bar, the way
+        // Obsidian puts them.
+        createRow: {
+            flexDirection: "row",
+            justifyContent: "center",
+            gap: 28,
+            paddingVertical: 10,
+        },
+        createButton: {
+            padding: 6,
+        },
+        centered: {
             flex: 1,
             alignItems: "center",
             justifyContent: "center",
