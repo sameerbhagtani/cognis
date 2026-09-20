@@ -13,10 +13,19 @@ import {
 // Mounted after requireNoteAccess, which is where req.note gives us the workspace.
 const limitNoteWrite = rateLimitWorkspaceWrite((req) => req.note?.workspaceId);
 
+// A create has no req.note yet, so it keys off the membership the role guard
+// just resolved rather than the raw path param.
+const limitWorkspaceNoteWrite = rateLimitWorkspaceWrite((req) => req.workspaceMember?.workspaceId);
+
 // Workspace-scoped: mounted under /workspaces/:workspaceId/notes.
 export const workspaceNoteRoutes = Router({ mergeParams: true });
 
-workspaceNoteRoutes.post("/", requireWorkspaceRole(WRITE_ROLES), noteController.createNote);
+workspaceNoteRoutes.post(
+    "/",
+    requireWorkspaceRole(WRITE_ROLES),
+    limitWorkspaceNoteWrite,
+    noteController.createNote,
+);
 workspaceNoteRoutes.get("/", requireWorkspaceRole(MEMBER_ROLES), noteController.listNotes);
 
 // Resource-scoped: mounted at /notes, so requireNoteAccess resolves the

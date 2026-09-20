@@ -75,20 +75,30 @@ export async function rateLimitNoteUpdate(req: Request, res: Response, next: Nex
  * user's budget everywhere else, and one user shouldn't be able to monopolise a
  * workspace's lock.
  *
- * Mounted after the resource guard, which is where the workspace becomes known.
+ * Exposed directly as well as through the middleware below, because a trash
+ * batch names its own workspace: there is nothing to key on until the handler
+ * has resolved it, so that one route spends its point from inside the handler.
+ * Both go through here so the key format and the message have one definition.
  */
+export async function consumeWorkspaceWriteLimit(
+    res: Response,
+    userId: string,
+    workspaceId: string,
+) {
+    await consumeRateLimit(
+        res,
+        limiters.workspaceWrite,
+        `${userId}:${workspaceId}`,
+        "Too many changes to this workspace, slow down",
+    );
+}
+
+/** Mounted after the resource guard, which is where the workspace becomes known. */
 export function rateLimitWorkspaceWrite(getWorkspaceId: (req: Request) => string | undefined) {
     return async function workspaceWriteLimiter(req: Request, res: Response, next: NextFunction) {
         const workspaceId = getWorkspaceId(req);
 
-        if (workspaceId) {
-            await consumeRateLimit(
-                res,
-                limiters.workspaceWrite,
-                `${req.user.id}:${workspaceId}`,
-                "Too many changes to this workspace, slow down",
-            );
-        }
+        if (workspaceId) await consumeWorkspaceWriteLimit(res, req.user.id, workspaceId);
 
         next();
     };

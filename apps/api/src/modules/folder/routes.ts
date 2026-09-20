@@ -10,11 +10,22 @@ import { rateLimitWorkspaceWrite } from "../../shared/middlewares/rateLimit.js";
 // Mounted after requireFolderAccess, which is where req.folder gives us the workspace.
 const limitFolderWrite = rateLimitWorkspaceWrite((req) => req.folder?.workspaceId);
 
+// A create has no req.folder yet, so it keys off the membership the role guard
+// just resolved rather than the raw path param.
+const limitWorkspaceFolderWrite = rateLimitWorkspaceWrite(
+    (req) => req.workspaceMember?.workspaceId,
+);
+
 // Workspace-scoped: mounted under /workspaces/:workspaceId/folders, so the
 // workspace guards apply directly.
 export const workspaceFolderRoutes = Router({ mergeParams: true });
 
-workspaceFolderRoutes.post("/", requireWorkspaceRole(WRITE_ROLES), folderController.createFolder);
+workspaceFolderRoutes.post(
+    "/",
+    requireWorkspaceRole(WRITE_ROLES),
+    limitWorkspaceFolderWrite,
+    folderController.createFolder,
+);
 workspaceFolderRoutes.get("/", requireWorkspaceRole(MEMBER_ROLES), folderController.listFolders);
 
 // Resource-scoped: mounted at /folders, no workspaceId in the path, so
