@@ -11,6 +11,7 @@
             "icon": "./assets/expo.icon"
         },
         "android": {
+            "package": "com.cognis.app",
             "adaptiveIcon": {
                 "backgroundColor": "#E6F4FE",
                 "foregroundImage": "./assets/images/android-icon-foreground.png",
@@ -44,6 +45,16 @@
         "experiments": {
             "typedRoutes": true,
             "reactCompiler": true
-        }
+        },
+        "extra": {
+            "router": {},
+            "expo-status-bar": {
+                "hidden": false
+            },
+            "eas": {
+                "projectId": "20c1c40a-5578-419f-8173-7b9cff92c819"
+            }
+        },
+        "owner": "sameerbhagtani"
     }
 }

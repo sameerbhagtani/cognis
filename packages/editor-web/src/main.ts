@@ -1,0 +1,87 @@
+import { Compartment, EditorState } from "@codemirror/state";
+import { EditorView, keymap } from "@codemirror/view";
+import { defaultKeymap, history, historyKeymap } from "@codemirror/commands";
+import { markdown } from "@codemirror/lang-markdown";
+import { GFM } from "@lezer/markdown";
+import {
+    atomicEditorTheme,
+    atomicMarkdownSyntax,
+    autoCloseCodeFence,
+    extendEmphasisPair,
+    inlinePreview,
+    readOnlyExtension,
+    startAsteriskList,
+} from "@atomic-editor/editor";
+import "@atomic-editor/editor/styles.css";
+
+import { runCommand } from "./commands";
+
+import type { EditorCommand, EditorEvent } from "./protocol";
+
+declare global {
+    interface Window {
+        ReactNativeWebView?: { postMessage: (message: string) => void };
+        cognisEditor: {
+            setContent: (content: string) => void;
+            getContent: (messageId: string) => void;
+            setReadOnly: (readOnly: boolean) => void;
+            exec: (command: EditorCommand) => void;
+        };
+    }
+}
+
+function post(event: EditorEvent) {
+    window.ReactNativeWebView?.postMessage(JSON.stringify(event));
+}
+
+const readOnlyCompartment = new Compartment();
+
+const mount = document.getElementById("editor");
+if (!mount) throw new Error("missing #editor mount node");
+
+const view = new EditorView({
+    parent: mount,
+    state: EditorState.create({
+        doc: "",
+        extensions: [
+            history(),
+            keymap.of([...defaultKeymap, ...historyKeymap]),
+            markdown({ extensions: GFM }),
+            inlinePreview({ onLinkClick: (url) => post({ type: "linkClick", payload: { url } }) }),
+            atomicEditorTheme,
+            atomicMarkdownSyntax,
+            autoCloseCodeFence,
+            extendEmphasisPair,
+            startAsteriskList,
+            readOnlyCompartment.of(readOnlyExtension(false)),
+            EditorView.lineWrapping,
+            EditorView.updateListener.of((update) => {
+                if (update.docChanged) {
+                    post({ type: "change", payload: { content: update.state.doc.toString() } });
+                }
+            }),
+        ],
+    }),
+});
+
+window.cognisEditor = {
+    setContent(content) {
+        view.dispatch({
+            changes: { from: 0, to: view.state.doc.length, insert: content },
+        });
+    },
+    getContent(messageId) {
+        post({
+            type: "getContentResult",
+            payload: { messageId, content: view.state.doc.toString() },
+        });
+    },
+    setReadOnly(readOnly) {
+        view.dispatch({ effects: readOnlyCompartment.reconfigure(readOnlyExtension(readOnly)) });
+    },
+    exec(command) {
+        runCommand(view, command);
+    },
+};
+
+post({ type: "ready" });

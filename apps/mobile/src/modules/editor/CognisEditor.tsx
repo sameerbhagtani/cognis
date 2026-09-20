@@ -1,59 +1,100 @@
-import React, { useState } from "react";
-import { KeyboardAvoidingView, Platform, StyleSheet, TextInput, View } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import useTheme from "@/lib/theme/useTheme";
-import {
-    RichText,
-    Toolbar,
-    useEditorBridge,
-    darkEditorTheme,
-    CoreBridge,
-    darkEditorCss,
-    PlaceholderBridge,
-    TenTapStartKit,
-} from "@10play/tentap-editor";
+import { forwardRef, useEffect, useImperativeHandle, useRef, useState } from "react";
+import { StyleSheet } from "react-native";
+import { WebView, type WebViewMessageEvent } from "react-native-webview";
 
-export function CongnisEditor() {
-    const { theme } = useTheme();
+import { editorHtml } from "@cognis/editor-web";
+import type { EditorCommand, EditorEvent } from "@cognis/editor-web/protocol";
 
-    const editor = useEditorBridge({
-        autofocus: true,
-        initialContent: "",
-        bridgeExtensions: [
-            ...TenTapStartKit,
-            PlaceholderBridge.configureExtension({
-                placeholder: "Type something...",
-            }),
-        ],
-    });
+export type CognisEditorHandle = {
+    exec: (command: EditorCommand) => void;
+    getContent: () => Promise<string>;
+};
 
-    return (
-        <SafeAreaView style={{ flex: 1 }}>
-            <RichText editor={editor} />
-            <KeyboardAvoidingView
-                behavior={Platform.OS === "ios" ? "padding" : "height"}
-                style={styles.editorKeyboardAvoidingView}
-            >
-                <Toolbar editor={editor} />
-            </KeyboardAvoidingView>
-        </SafeAreaView>
-    );
+type CognisEditorProps = {
+    /** Read once, when the bridge signals ready. A different note is a different
+     *  component instance (key it by note id), not a prop update. */
+    initialContent: string;
+    readOnly?: boolean;
+    onChange?: (content: string) => void;
+    onLinkPress?: (url: string) => void;
+};
+
+function randomMessageId() {
+    return Math.random().toString(36).slice(2);
 }
 
+export const CognisEditor = forwardRef<CognisEditorHandle, CognisEditorProps>(function CognisEditor(
+    { initialContent, readOnly = false, onChange, onLinkPress },
+    ref,
+) {
+    const webviewRef = useRef<WebView>(null);
+    const pendingGets = useRef(new Map<string, (content: string) => void>());
+    const initialContentRef = useRef(initialContent);
+    const [ready, setReady] = useState(false);
+
+    function runJs(script: string) {
+        webviewRef.current?.injectJavaScript(`${script}; true;`);
+    }
+
+    useEffect(() => {
+        if (ready)
+            runJs(`window.cognisEditor.setContent(${JSON.stringify(initialContentRef.current)})`);
+    }, [ready]);
+
+    useEffect(() => {
+        if (ready) runJs(`window.cognisEditor.setReadOnly(${JSON.stringify(readOnly)})`);
+    }, [ready, readOnly]);
+
+    useImperativeHandle(ref, () => ({
+        exec(command) {
+            runJs(`window.cognisEditor.exec(${JSON.stringify(command)})`);
+        },
+        getContent() {
+            return new Promise((resolve) => {
+                const messageId = randomMessageId();
+                pendingGets.current.set(messageId, resolve);
+                runJs(`window.cognisEditor.getContent(${JSON.stringify(messageId)})`);
+            });
+        },
+    }));
+
+    function handleMessage(event: WebViewMessageEvent) {
+        const message: EditorEvent = JSON.parse(event.nativeEvent.data);
+
+        switch (message.type) {
+            case "ready":
+                setReady(true);
+                return;
+            case "change":
+                onChange?.(message.payload.content);
+                return;
+            case "getContentResult": {
+                const resolve = pendingGets.current.get(message.payload.messageId);
+                resolve?.(message.payload.content);
+                pendingGets.current.delete(message.payload.messageId);
+                return;
+            }
+            case "linkClick":
+                onLinkPress?.(message.payload.url);
+                return;
+        }
+    }
+
+    return (
+        <WebView
+            ref={webviewRef}
+            source={{ html: editorHtml }}
+            onMessage={handleMessage}
+            style={styles.webview}
+            keyboardDisplayRequiresUserAction={false}
+            hideKeyboardAccessoryView
+        />
+    );
+});
+
 const styles = StyleSheet.create({
-    container: {
+    webview: {
         flex: 1,
-        marginLeft: 10,
-    },
-    editor: {
-        flex: 1,
-        fontSize: 16,
-        padding: 16,
-        textAlignVertical: "top",
-    },
-    editorKeyboardAvoidingView: {
-        position: "absolute",
-        width: "100%",
-        bottom: 0,
+        backgroundColor: "transparent",
     },
 });

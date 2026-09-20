@@ -69,7 +69,14 @@ The backend requires email verification before sign-in and supports Better Auth'
 
 An Obsidian-style live-preview markdown editor, purpose-built rather than adopted from a library — no existing RN package combines rich-enough editing with real markdown storage (see the library survey below). `note.content` stores clean markdown text throughout; there is no HTML involved anywhere in this design.
 
-**Architecture.** A small bundled web app — CodeMirror 6 + `@codemirror/lang-markdown` plus a live-preview decoration extension (vendored/adapted from an existing open-source CM6 package such as `codemirror-live-markdown` rather than hand-written, since "hide markdown syntax except on the active line" is a fiddly algorithm that's already been solved) — hosted inside `react-native-webview`. This is the same integration shape TenTap itself used (bundle a web editor, talk to it over a postMessage bridge), just pointed at CodeMirror instead of TipTap, and it's also literally how Obsidian's own mobile apps work: Live Preview is CodeMirror 6 in a WebView there too, chosen specifically because it's one of the only editors that performs well on mobile.
+**Architecture.** A small bundled web app — CodeMirror 6 plus [`@atomic-editor/editor`](https://www.npmjs.com/package/@atomic-editor/editor) (MIT, actively maintained, vetted against the real npm registry metadata and its shipped type definitions rather than assumed) for the live-preview decorations — hosted inside `react-native-webview`. This is the same integration shape TenTap itself used (bundle a web editor, talk to it over a postMessage bridge), just pointed at CodeMirror instead of TipTap, and it's also literally how Obsidian's own mobile apps work: Live Preview is CodeMirror 6 in a WebView there too, chosen specifically because it's one of the only editors that performs well on mobile.
+
+`@atomic-editor/editor` exports plain CM6 `Extension` factories rather than only a React component, so we use just the pieces we need directly in our own `EditorState`, with no React runtime involved in the actual bundle:
+
+- `inlinePreview()` — the exact "raw markdown on the active line, rendered elsewhere" behavior.
+- `readOnlyExtension(ro)` — designed to live in a `Compartment` for in-place Edit ↔ Read toggling with no remount and preserved scroll position; in read-only it already does what our Reading view needs (no caret, no focus, whole doc stays rendered) rather than us building that ourselves.
+- `atomicEditorTheme` / `atomicMarkdownSyntax` — ready-made styling for the rendered markdown, so headings/bold/etc. don't need hand-written CSS.
+- `edit-helpers` (auto-continue lists, auto-close code fences, smart emphasis pairing) — free quality-of-life wins we didn't have to build.
 
 **Two modes, mapped onto Obsidian's own two view modes:**
 
@@ -178,5 +185,4 @@ For the socket client itself: plain `socket.io-client`, with `transports: ["webs
 - Confirm the `@better-auth/expo` API for sharing the session with axios/socket (see above).
 - Confirm verification/reset emails actually deep-link back into the app via `cognis://` on a real device/simulator — the plugin is built for this, but untested here.
 - Read the exact Expo 57 docs before touching anything native-module-adjacent (drawer, gesture handler, pager, keyboard controller, webview), per `apps/mobile/AGENTS.md` — the version has moved past what's in general training data.
-- Pick and vet the specific open-source CM6 live-preview extension to vendor (license, maintenance state, how cleanly it separates from its host project) before building on top of it.
 - Prototype the editor (WebView bridge + live preview + toolbar + read-only toggle) as its own spike before building the rest of phase 3's screens around it — it's the one piece here without a well-trodden path in this codebase already.
