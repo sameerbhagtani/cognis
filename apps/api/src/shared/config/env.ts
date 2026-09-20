@@ -13,6 +13,8 @@ const envSchema = z.object({
     EMAIL_FROM_NAME: z.string().default("Cognis"),
 
     TRASH_RETENTION_DAYS: z.coerce.number().int().positive().default(30),
+
+    OPENAI_API_KEY: z.string().min(1),
 });
 
 function createEnv(env: NodeJS.ProcessEnv) {

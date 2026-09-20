@@ -139,6 +139,8 @@ This is the hard part, because **autosave writes constantly** — the note edit 
 
 Three mechanisms, in order of defence:
 
+**Indexing is charged to the workspace owner**, not to whoever typed. The owner is derivable from the note alone, which is what the background worker sees, and the content is theirs. The alternative — charging the editor — cannot work from the worker, which has no idea who last wrote the note.
+
 **1. Content hashing.** Before doing anything, hash the note's content and compare it to the stored hash. If they match, just record that it is up to date and stop — no splitting, no API call, no cost. Many autosaves do not change content meaningfully: an undo back to the original, a cursor move, a save fired on a pause where nothing was typed. This makes all of those free.
 
 **2. A debounce.** When a note is written, schedule an embed for a few seconds later, resetting the timer on each new write. Embedding happens once typing stops, not once per keystroke. This is what makes a note you just wrote available to chat almost immediately.
@@ -151,7 +153,9 @@ It behaves as a cooldown. If the debounce wants to fire and the note was embedde
 
 **3. A worker process.** A separate entrypoint, alongside `jobs/purgeTrash.ts`, that polls for stale notes and embeds them. This is the backstop: the debounce lives in memory, so a restart loses it, and a second API instance would not see the first one's timers.
 
-The worker claims notes with `SELECT ... FOR UPDATE SKIP LOCKED` so two instances never process the same note. Combined with content hashing, a duplicate attempt is harmless — it finds the hash already matching and does nothing.
+Mutual exclusion comes from the embed itself, not from how the worker picks notes. Embedding one note runs in a transaction with `SELECT ... FOR UPDATE` on that note's row, so two processes can never embed the same note at once. The selection query deliberately takes no lock: a row lock lives only as long as its transaction, and holding one open across a whole batch would serialise the very calls it is meant to spread out. Two workers may therefore select the same note, and the second simply waits, finds the hash already current, and returns "unchanged" for the price of one read.
+
+Holding that transaction across the embedding API call does mean holding a database connection for the length of a network round trip. That is a deliberate trade — it buys exact exclusion for a worker doing serial batches, where pool pressure is nil — and the thing to revisit if embedding throughput ever matters.
 
 **Backfill comes free.** Notes written before Phase 2 have no state row, which makes them stale by definition. The worker picks them up on its first run. No separate migration script.
 
@@ -377,7 +381,7 @@ Only the secret. Model ids are constants in config, not environment variables �
 
 Phase 1 introduced one scheduled job, the trash purge. Phase 2 adds the embedding worker. **Nothing starts either one for you.** `pnpm start` runs the server and only the server.
 
-Unlike the purge job, the embedding worker is not a one-shot run on a timer — it is a long-running loop that polls for stale notes. On a container platform it is a second always-on service. `SELECT ... FOR UPDATE SKIP LOCKED` means running more than one is safe, just unnecessary.
+Unlike the purge job, the embedding worker is not a one-shot run on a timer — it is a long-running loop that polls for stale notes. On a container platform it is a second always-on service. Running more than one is safe — the per-note row lock and the content hash between them make a duplicate attempt free — but it adds contention rather than throughput. Run one.
 
 If the worker is not running, notes still get embedded by the in-process debounce under normal conditions. What is lost is the recovery path: anything missed during a restart stays unsearchable until the worker runs. Do not treat it as optional.
 

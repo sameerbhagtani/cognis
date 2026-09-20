@@ -183,6 +183,9 @@ importers:
             express:
                 specifier: ^5.2.1
                 version: 5.2.1(supports-color@8.1.1)
+            openai:
+                specifier: ^7.19.0
+                version: 7.19.0(undici@8.10.2)(ws@8.21.3)(zod@4.6.4)
             rate-limiter-flexible:
                 specifier: ^11.2.1
                 version: 11.2.1
@@ -9289,6 +9292,33 @@ packages:
             }
         engines: { node: ">=8" }
 
+    openai@7.19.0:
+        resolution:
+            {
+                integrity: sha512-MX2s3u2L5racTO0CC/SWpCOasJQBCJrqLKXK+l82cAhdeF8mPMBEe/gxMm0ZFa2xpKpOFLRjxv5afYEZbBXmbQ==,
+            }
+        engines: { node: ">=22.0.0" }
+        peerDependencies:
+            "@aws-sdk/credential-provider-node": ">=3.972.0 <4"
+            "@smithy/hash-node": ">=4.3.0 <5"
+            "@smithy/signature-v4": ">=5.4.0 <6"
+            undici: ">=5 <9"
+            ws: ^8.21.0
+            zod: ^3.25 || ^4.0
+        peerDependenciesMeta:
+            "@aws-sdk/credential-provider-node":
+                optional: true
+            "@smithy/hash-node":
+                optional: true
+            "@smithy/signature-v4":
+                optional: true
+            undici:
+                optional: true
+            ws:
+                optional: true
+            zod:
+                optional: true
+
     optionator@0.9.4:
         resolution:
             {
@@ -18184,6 +18214,12 @@ snapshots:
         dependencies:
             is-docker: 2.2.1
             is-wsl: 2.2.0
+
+    openai@7.19.0(undici@8.10.2)(ws@8.21.3)(zod@4.6.4):
+        optionalDependencies:
+            undici: 8.10.2
+            ws: 8.21.3
+            zod: 4.6.4
 
     optionator@0.9.4:
         dependencies:

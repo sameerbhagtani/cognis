@@ -4,6 +4,7 @@ import { createNoteSchema, listNotesQuerySchema, updateNoteSchema } from "./vali
 
 import { restoreBatch } from "../../shared/services/trash.js";
 import { emitBatchRestored, emitNoteUpdated, emitToWorkspace } from "../../realtime/emitter.js";
+import { scheduleNoteEmbedding } from "../../shared/services/embeddingScheduler.js";
 import ApiError from "../../shared/utils/ApiError.js";
 import ApiResponse from "../../shared/utils/ApiResponse.js";
 
@@ -27,6 +28,7 @@ export async function createNote(req: Request<WorkspaceParams>, res: Response) {
     });
 
     emitToWorkspace(workspaceId, "note:created", note);
+    scheduleNoteEmbedding(note.id);
 
     return ApiResponse.created(res, "Note created", note);
 }
@@ -64,6 +66,10 @@ export async function updateNote(req: Request<NoteParams>, res: Response) {
     // Only the edit is throttled; a move is a one-off structural change that
     // shouldn't wait behind an autosave window.
     if (title !== undefined || content !== undefined) {
+        // A move changes no embedded text, so only a title or body edit is worth
+        // queueing. Both are embedded, since the title rides on every chunk.
+        scheduleNoteEmbedding(updated.id);
+
         emitNoteUpdated(note.workspaceId, {
             id: updated.id,
             title: updated.title,
