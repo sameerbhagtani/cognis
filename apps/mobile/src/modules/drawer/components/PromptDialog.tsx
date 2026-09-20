@@ -145,11 +145,14 @@ function createStyles(theme: Theme) {
             color: theme.foreground,
         },
         input: {
-            height: 48,
+            // minHeight so a large system font size grows the field instead of
+            // clipping what's typed in it.
+            minHeight: 48,
             borderWidth: 1.5,
             borderColor: theme.subtleBorder,
             borderRadius: 12,
             paddingHorizontal: 14,
+            paddingVertical: 12,
             fontSize: 16,
             color: theme.foreground,
             backgroundColor: theme.inputBg,

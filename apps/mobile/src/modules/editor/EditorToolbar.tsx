@@ -71,6 +71,13 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
             paddingHorizontal: 12,
             alignItems: "center",
             gap: 20,
+            // flexGrow rather than a width cap: this scrolls horizontally, so
+            // pinning its width would stop it scrolling on a narrow screen.
+            // Growing to fill lets justifyContent centre the buttons under the
+            // centred editor once they all fit, and changes nothing when they
+            // don't.
+            flexGrow: 1,
+            justifyContent: "center",
         },
         button: {
             paddingVertical: 10,

@@ -4,6 +4,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { ApiClientError } from "@/lib/api";
 import { authClient } from "@/lib/auth";
+import { CONTENT_MAX_WIDTH, useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { handleSignout } from "@/modules/auth/api";
 import { ScreenHeader } from "@/modules/drawer";
@@ -16,9 +17,10 @@ import type { AiUsage } from "../types";
 
 export default function SettingsScreen() {
     const { theme } = useTheme();
+    const { isLandscape } = useLayout();
     const { data: session } = authClient.useSession();
 
-    const styles = createStyles(theme);
+    const styles = createStyles(theme, isLandscape);
 
     const [usage, setUsage] = useState<AiUsage | null>(null);
     const [usageError, setUsageError] = useState<string | null>(null);
@@ -94,15 +96,24 @@ export default function SettingsScreen() {
     );
 }
 
-function createStyles(theme: Theme) {
+function createStyles(theme: Theme, isLandscape: boolean) {
     return StyleSheet.create({
         container: {
             flex: 1,
             backgroundColor: theme.background,
         },
         content: {
-            padding: 16,
-            gap: 28,
+            paddingHorizontal: 16,
+            // Tighter vertically in landscape, the same trade createAuthStyles
+            // already makes: far fewer sections fit on screen at once, so the
+            // rhythm between them is what gives way first.
+            paddingVertical: isLandscape ? 12 : 16,
+            gap: isLandscape ? 20 : 28,
+            // Centred under its cap rather than left-aligned, so a landscape
+            // window doesn't leave every control hugging one edge.
+            width: "100%",
+            maxWidth: CONTENT_MAX_WIDTH,
+            alignSelf: "center",
         },
         section: {
             gap: 12,

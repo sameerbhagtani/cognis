@@ -1,19 +1,12 @@
 import { useState } from "react";
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    useWindowDimensions,
-    ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Link } from "expo-router";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/modules/auth/validation";
 
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
 
@@ -21,8 +14,7 @@ import { handleForgotPassword } from "../api";
 
 export default function ForgotPassword() {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
 
     const styles = createAuthStyles(theme, isLandscape);
 

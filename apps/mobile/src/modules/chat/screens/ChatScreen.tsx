@@ -18,6 +18,7 @@ import Markdown from "react-native-markdown-display";
 import { ApiClientError } from "@/lib/api";
 import { useChats } from "@/lib/chat";
 import { useNotes } from "@/lib/notes";
+import { CONTENT_MAX_WIDTH } from "@/lib/hooks/useLayout";
 import { getSocket, joinChat, leaveChat } from "@/lib/socket";
 import useTheme from "@/lib/theme/useTheme";
 import { fetchChat, sendMessage } from "@/modules/chat/api";
@@ -344,34 +345,36 @@ export default function ChatScreen({ chatId }: { chatId: string }) {
                  *  of it. Its own safe-area padding is cancelled by the `opened`
                  *  offset, since the keyboard covers that strip. */}
                 <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
-                    <View style={[styles.composer, { paddingBottom: 12 + insets.bottom }]}>
-                        <TextInput
-                            value={draft}
-                            onChangeText={setDraft}
-                            placeholder="Ask about your notes…"
-                            placeholderTextColor={theme.subtleBorder}
-                            multiline
-                            maxLength={MAX_MESSAGE_LENGTH}
-                            style={styles.input}
-                        />
+                    <View style={[styles.composerBar, { paddingBottom: 12 + insets.bottom }]}>
+                        <View style={styles.composer}>
+                            <TextInput
+                                value={draft}
+                                onChangeText={setDraft}
+                                placeholder="Ask about your notes…"
+                                placeholderTextColor={theme.subtleBorder}
+                                multiline
+                                maxLength={MAX_MESSAGE_LENGTH}
+                                style={styles.input}
+                            />
 
-                        <Pressable
-                            onPress={() => void send()}
-                            disabled={!draft.trim() || isSending || streaming !== null}
-                            style={({ pressed }) => [
-                                styles.send,
-                                {
-                                    opacity:
-                                        !draft.trim() || isSending || streaming !== null
-                                            ? 0.4
-                                            : pressed
-                                              ? 0.85
-                                              : 1,
-                                },
-                            ]}
-                        >
-                            <MaterialCommunityIcons name="send" size={18} color="#ffffff" />
-                        </Pressable>
+                            <Pressable
+                                onPress={() => void send()}
+                                disabled={!draft.trim() || isSending || streaming !== null}
+                                style={({ pressed }) => [
+                                    styles.send,
+                                    {
+                                        opacity:
+                                            !draft.trim() || isSending || streaming !== null
+                                                ? 0.4
+                                                : pressed
+                                                  ? 0.85
+                                                  : 1,
+                                    },
+                                ]}
+                            >
+                                <MaterialCommunityIcons name="send" size={18} color="#ffffff" />
+                            </Pressable>
+                        </View>
                     </View>
                 </KeyboardStickyView>
             </View>
@@ -402,6 +405,12 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
         threadContent: {
             padding: 16,
             gap: 12,
+            // The thread is capped and centred, which also keeps the assistant
+            // bubbles' full-width stretch from running the whole of a
+            // landscape window.
+            width: "100%",
+            maxWidth: CONTENT_MAX_WIDTH,
+            alignSelf: "center",
         },
         empty: {
             fontSize: 14,
@@ -468,16 +477,25 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
             textAlign: "center",
             paddingVertical: 8,
         },
-        composer: {
-            flexDirection: "row",
-            alignItems: "flex-end",
-            gap: 8,
-            padding: 12,
+        // The bar spans the window so its top border and background reach both
+        // edges; only the controls inside it are capped and centred, lining up
+        // with the thread above.
+        composerBar: {
             // paddingBottom is applied at the call site - it depends on whether
             // the keyboard is up.
             borderTopWidth: 1,
             borderTopColor: theme.subtleBorder,
             backgroundColor: theme.background,
+        },
+        composer: {
+            flexDirection: "row",
+            alignItems: "flex-end",
+            gap: 8,
+            paddingHorizontal: 12,
+            paddingTop: 12,
+            width: "100%",
+            maxWidth: CONTENT_MAX_WIDTH,
+            alignSelf: "center",
         },
         input: {
             flex: 1,
@@ -494,6 +512,9 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
             backgroundColor: theme.inputBg,
         },
         send: {
+            // Fixed, deliberately: it holds an icon, not text, so it has no
+            // reason to grow. The row is alignItems: "flex-end", so it stays
+            // level with the bottom of an input that has grown.
             width: 44,
             height: 44,
             borderRadius: 12,

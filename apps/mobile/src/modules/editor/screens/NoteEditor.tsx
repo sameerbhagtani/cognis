@@ -16,6 +16,7 @@ import { KeyboardStickyView } from "react-native-keyboard-controller";
 
 import { ApiClientError } from "@/lib/api";
 import { useDebouncedCallback } from "@/lib/hooks/useDebouncedCallback";
+import { CONTENT_MAX_WIDTH } from "@/lib/hooks/useLayout";
 import { useNotes } from "@/lib/notes";
 import { getSocket } from "@/lib/socket";
 import useTheme from "@/lib/theme/useTheme";
@@ -274,45 +275,51 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
                     }
                 />
 
-                <View style={styles.titleRow}>
-                    <TextInput
-                        value={title}
-                        onChangeText={onChangeTitle}
-                        onBlur={flushTitleSave}
-                        editable={canWrite && !readOnly}
-                        placeholder="Untitled"
-                        placeholderTextColor={theme.subtleBorder}
-                        maxLength={50}
-                        style={styles.title}
-                    />
-                    <Text style={styles.saveState}>
-                        {saveState === "saving"
-                            ? "Saving…"
-                            : saveState === "saved"
-                              ? "Saved"
-                              : saveState === "error"
-                                ? "Not saved"
-                                : ""}
-                    </Text>
-                </View>
-
-                {changedElsewhere && (
-                    <Pressable style={styles.banner} onPress={() => void reload()}>
-                        <Text style={styles.bannerText}>
-                            This note changed elsewhere. Tap to reload.
+                {/* Title, banner and editor share one cap so they stay aligned
+                 *  with each other when a landscape window is wider than the
+                 *  column of text we actually want. */}
+                <View style={styles.body}>
+                    <View style={styles.titleRow}>
+                        <TextInput
+                            value={title}
+                            onChangeText={onChangeTitle}
+                            onBlur={flushTitleSave}
+                            editable={canWrite && !readOnly}
+                            placeholder="Untitled"
+                            placeholderTextColor={theme.subtleBorder}
+                            maxLength={50}
+                            style={styles.title}
+                        />
+                        <Text style={styles.saveState}>
+                            {saveState === "saving"
+                                ? "Saving…"
+                                : saveState === "saved"
+                                  ? "Saved"
+                                  : saveState === "error"
+                                    ? "Not saved"
+                                    : ""}
                         </Text>
-                    </Pressable>
-                )}
+                    </View>
 
-                <CognisEditor
-                    // A different note, or a reload of this one, is a different
-                    // instance: initialContent is read once by design.
-                    key={`${note.id}:${reloadKey}`}
-                    ref={editorRef}
-                    initialContent={note.content ?? ""}
-                    readOnly={readOnly}
-                    onChange={scheduleContentSave}
-                />
+                    {changedElsewhere && (
+                        <Pressable style={styles.banner} onPress={() => void reload()}>
+                            <Text style={styles.bannerText}>
+                                This note changed elsewhere. Tap to reload.
+                            </Text>
+                        </Pressable>
+                    )}
+
+                    <CognisEditor
+                        // A different note, or a reload of this one, is a
+                        // different instance: initialContent is read once by
+                        // design.
+                        key={`${note.id}:${reloadKey}`}
+                        ref={editorRef}
+                        initialContent={note.content ?? ""}
+                        readOnly={readOnly}
+                        onChange={scheduleContentSave}
+                    />
+                </View>
             </SafeAreaView>
 
             {/* `offset` is a translateY, not padding: a positive `closed` value
@@ -347,6 +354,12 @@ function createStyles(theme: Theme) {
             fontSize: 14,
             color: theme.danger,
             textAlign: "center",
+        },
+        body: {
+            flex: 1,
+            width: "100%",
+            maxWidth: CONTENT_MAX_WIDTH,
+            alignSelf: "center",
         },
         titleRow: {
             flexDirection: "row",

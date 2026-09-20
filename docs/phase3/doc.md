@@ -171,6 +171,55 @@ Where invite lives: from the workspace popup, an owner sees a small "Invite" act
 
 ---
 
+## Responsiveness, as its own phase
+
+Deferred out of phases 4–6 and picked up after Settings. This is a consolidation phase: nothing new appears on screen, the existing screens just stop assuming a portrait phone.
+
+### Where it stands today
+
+Three things already work app-wide and are not in question:
+
+- **Safe-area insets.** `SafeAreaProvider` at the root, `SafeAreaView`/`useSafeAreaInsets` in every screen that touches an edge.
+- **Flex layout.** No fixed container widths anywhere, so screens fill whatever width they are given.
+- **Keyboard avoidance**, by three different mechanisms suited to their screens — `KeyboardAvoidingView` on the auth/workspace forms, `KeyboardStickyView` in the editor, a manual `keyboardDidShow` listener in chat.
+
+The gap is orientation and width, and it is split cleanly down the middle of the build order:
+
+- The **auth and workspace forms** (`Signin`, `Signup`, `ForgotPassword`, `ResetPassword`, `VerifyEmail`, `CreateWorkspace`, `InviteMember`) each compute `isLandscape = width > height` from `useWindowDimensions()` and hand it to `createAuthStyles`, which tightens vertical padding, shrinks the logo and title, and widens the card's `maxWidth` from 400 to 500.
+- The **screens built in phases 4–6** — editor, chat, settings, sidebar — have no `useWindowDimensions` at all. In landscape they stretch to the full window, so line length grows without limit.
+
+`orientation` is `"default"` in `app.json`, so every screen can rotate. Nothing sets `drawerStyle.width`, which turns out to be correct — see the dropped item below.
+
+### Scope
+
+**In:**
+
+- A shared breakpoint hook, replacing the `isLandscape = width > height` line currently written out in seven screens.
+- A content `maxWidth` on the editor, chat and settings bodies, so text stops running the full width of a landscape window.
+- Landscape padding/spacing passes on the phase 4–6 screens, matching what `createAuthStyles` already does for auth.
+- ~~A drawer width cap~~ — **dropped during implementation.** `react-native-drawer-layout`'s default is `min(window.width - 56, 360)`, so it already caps itself at 360dp; a landscape window widens the content, not the sidebar. Capping it again only made the portrait drawer narrower than it is today.
+- **Font scaling absorbed rather than clamped** — see below.
+
+**Out:**
+
+- Tablet-specific layouts: no permanent (non-overlay) sidebar, no two-pane notes/editor split. A tablet gets the landscape phone layout with wider gutters. Revisit only if tablets become a real target.
+- `supportsTablet`, breakpoint-driven navigation changes, or anything that alters drawer _behaviour_ rather than its dimensions.
+
+### Font scaling
+
+Every font size in the app is a hardcoded number and nothing sets `allowFontScaling` or reads `fontScale`, so a large system font setting will overflow the tighter rows. The likeliest to break first are the drawer's workspace bar, the chat composer, and the drawer list rows.
+
+The decision is to **let text scale and fix the layouts that break** — wrapping, flexible heights, no fixed row heights on anything containing text — rather than capping with `maxFontSizeMultiplier`. Clamping is less work but partially overrides an accessibility setting the user deliberately chose, which is the wrong trade for a note-taking app people read in.
+
+### Acceptance
+
+- Every screen rotates to landscape and back without clipped, overlapping or full-width-stretched text.
+- `isLandscape` appears in exactly one place.
+- At the largest system font size, no row clips its text on any screen.
+- Portrait phone rendering is unchanged — this phase should be invisible in the orientation people actually use.
+
+---
+
 ## Cross-cutting technical notes
 
 Two different pieces of mobile code need the user's Better Auth session outside of `authClient` itself, and both hit the same underlying gap:

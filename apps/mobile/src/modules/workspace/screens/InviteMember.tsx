@@ -7,7 +7,6 @@ import {
     Pressable,
     ScrollView,
     StyleSheet,
-    useWindowDimensions,
     ActivityIndicator,
 } from "react-native";
 import { useRouter } from "expo-router";
@@ -16,6 +15,7 @@ import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ApiClientError } from "@/lib/api";
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
@@ -32,8 +32,7 @@ const ROLES: { value: AssignableRole; label: string; hint: string }[] = [
 
 export default function InviteMember() {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
     const router = useRouter();
     const { activeWorkspace } = useWorkspace();
 

@@ -1,19 +1,12 @@
 import { useState } from "react";
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    useWindowDimensions,
-    ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Link, useLocalSearchParams } from "expo-router";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { resetPasswordSchema, type ResetPasswordFormData } from "@/modules/auth/validation";
 
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
 
@@ -21,8 +14,7 @@ import { handleResetPassword } from "../api";
 
 export default function ResetPassword() {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
     const { token } = useLocalSearchParams<{ token?: string }>();
 
     const styles = createAuthStyles(theme, isLandscape);

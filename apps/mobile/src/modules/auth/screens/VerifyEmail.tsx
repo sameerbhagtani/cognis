@@ -1,7 +1,8 @@
 import { useState } from "react";
-import { View, Text, Pressable, ScrollView, useWindowDimensions } from "react-native";
+import { View, Text, Pressable, ScrollView } from "react-native";
 import { useLocalSearchParams, useRouter } from "expo-router";
 
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles } from "@/modules/auth/styles";
 
@@ -11,8 +12,7 @@ const RESEND_COOLDOWN_SECONDS = 30;
 
 export default function VerifyEmail() {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
     const router = useRouter();
     // `verified` isn't a Better Auth param - it's our own marker baked into the
     // callbackURL we send it, so this screen can tell "opened from a

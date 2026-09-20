@@ -1,19 +1,12 @@
 import { useState } from "react";
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    useWindowDimensions,
-    ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { useRouter } from "expo-router";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 
 import { ApiClientError } from "@/lib/api";
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
@@ -27,8 +20,7 @@ type CreateWorkspaceProps = {
 
 export default function CreateWorkspace({ onboarding = false }: CreateWorkspaceProps) {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
     const router = useRouter();
     const { refresh, selectWorkspace } = useWorkspace();
 

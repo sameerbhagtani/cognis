@@ -1,19 +1,12 @@
 import { useState } from "react";
-import {
-    View,
-    Text,
-    TextInput,
-    Pressable,
-    ScrollView,
-    useWindowDimensions,
-    ActivityIndicator,
-} from "react-native";
+import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
 import { Link, useRouter } from "expo-router";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { signInschema, type SignInFormData } from "@/modules/auth/validation";
 
+import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
 
@@ -21,8 +14,7 @@ import { handleSignin } from "../api";
 
 export default function Signin() {
     const { theme } = useTheme();
-    const { width, height } = useWindowDimensions();
-    const isLandscape = width > height;
+    const { isLandscape } = useLayout();
     const router = useRouter();
 
     const styles = createAuthStyles(theme, isLandscape);

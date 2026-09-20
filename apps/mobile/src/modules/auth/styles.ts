@@ -81,10 +81,14 @@ export function createAuthStyles(theme: Theme, isLandscape: boolean) {
             marginBottom: 6,
         },
         input: {
-            height: 50,
+            // minHeight, not height: at a large system font size the text
+            // inside grows, and a fixed height would clip it rather than let
+            // the field grow with it.
+            minHeight: 50,
             borderWidth: 1.5,
             borderRadius: 12,
             paddingHorizontal: 16,
+            paddingVertical: 12,
             fontSize: 16,
             color: theme.foreground,
             backgroundColor: theme.inputBg,
@@ -112,8 +116,10 @@ export function createAuthStyles(theme: Theme, isLandscape: boolean) {
         },
 
         button: {
-            height: 50,
+            minHeight: 50,
             borderRadius: 12,
+            paddingVertical: 12,
+            paddingHorizontal: 16,
             backgroundColor: theme.primary,
             alignItems: "center",
             justifyContent: "center",
