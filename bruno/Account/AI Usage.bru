@@ -1,0 +1,25 @@
+meta {
+  name: AI Usage
+  type: http
+  seq: 1
+}
+
+get {
+  url: {{baseUrl}}/api/me/ai-usage
+  body: none
+  auth: none
+}
+
+docs {
+  GET /api/me/ai-usage — what you have spent and how much is left, so a client
+  can show the ceiling rather than discovering it by hitting it.
+
+  Three figures, all in micro-dollars (millionths of a dollar, as integers).
+  chat covers asking questions, indexing covers embedding your notes as you
+  write them, and global is everyone's combined ceiling — which exists because
+  per-user limits bound one person, not the bill.
+
+  The window rolls rather than resetting, so resetsAt is a full window from now
+  rather than a fixed hour. A calendar reset would let the whole allowance be
+  spent either side of midnight.
+}

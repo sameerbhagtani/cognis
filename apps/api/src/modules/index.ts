@@ -4,6 +4,8 @@ import workspaceRoutes from "./workspace/routes.js";
 import { folderRoutes } from "./folder/routes.js";
 import { noteRoutes } from "./note/routes.js";
 import { trashRoutes } from "./trash/routes.js";
+import { chatRoutes } from "./chat/routes.js";
+import meRoutes from "./me/routes.js";
 
 import requireAuth from "../shared/middlewares/requireAuth.js";
 import { rateLimitByIp, rateLimitByUser } from "../shared/middlewares/rateLimit.js";
@@ -23,5 +25,7 @@ router.use("/workspaces", workspaceRoutes);
 router.use("/folders", folderRoutes);
 router.use("/notes", noteRoutes);
 router.use("/trash", trashRoutes);
+router.use("/chats", chatRoutes);
+router.use("/me", meRoutes);
 
 export default router;

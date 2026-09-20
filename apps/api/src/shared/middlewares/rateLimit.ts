@@ -11,6 +11,7 @@ const limiters = {
     noteUpdate: new RateLimiterMemory(RATE_LIMITS.noteUpdate),
     workspaceWrite: new RateLimiterMemory(RATE_LIMITS.workspaceWrite),
     memberInvite: new RateLimiterMemory(RATE_LIMITS.memberInvite),
+    chatMessage: new RateLimiterMemory(RATE_LIMITS.chatMessage),
 };
 
 /**
@@ -102,6 +103,12 @@ export function rateLimitWorkspaceWrite(getWorkspaceId: (req: Request) => string
 
         next();
     };
+}
+
+export async function rateLimitChatMessage(req: Request, res: Response, next: NextFunction) {
+    await consumeRateLimit(res, limiters.chatMessage, req.user.id, "Too many messages, slow down");
+
+    next();
 }
 
 /**

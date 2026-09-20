@@ -1,0 +1,26 @@
+meta {
+  name: Delete Chat
+  type: http
+  seq: 5
+}
+
+delete {
+  url: {{baseUrl}}/api/chats/{{chatId}}
+  body: none
+  auth: none
+}
+
+headers {
+  Origin: {{clientUrl}}
+}
+
+docs {
+  Immediate and permanent, taking its messages with it. There is no trash for
+  chats.
+
+  Skip this on a sequential run — it removes the chat the requests above use.
+
+  The spend it caused stays in the ledger. Those rows reference the message with
+  ON DELETE SET NULL rather than CASCADE, so deleting a chat cannot erase the
+  record of what it cost.
+}

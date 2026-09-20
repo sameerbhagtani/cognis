@@ -1,0 +1,35 @@
+meta {
+  name: Create Chat
+  type: http
+  seq: 1
+}
+
+post {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/chats
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {}
+}
+
+script:post-response {
+  if (res.status === 201) {
+    bru.setVar("chatId", res.body.data.id);
+  }
+}
+
+docs {
+  Any member, viewers included. Chatting is reading, and a viewer can already
+  open every note in the workspace.
+
+  title is optional. Left out, the chat is called "New chat" until the first
+  message arrives and renames it after the question. A title given here is never
+  overwritten.
+}

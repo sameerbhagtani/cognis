@@ -34,6 +34,11 @@ export const RATE_LIMITS = {
      *  inbox being written to rather than the account doing the writing. */
     memberInvite: { points: 10, duration: 3600 },
 
+    /** The first endpoint that costs money per request. The spend limits are the
+     *  real control; this just stops a burst arriving faster than a person could
+     *  plausibly type. */
+    chatMessage: { points: 20, duration: 60 },
+
     /** Concurrent sockets per user: a phone, a laptop and a few tabs. */
     wsConnections: 5,
 

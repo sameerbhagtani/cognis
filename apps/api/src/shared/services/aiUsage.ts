@@ -1,4 +1,4 @@
-import { and, db, eq, gte, schemas, sum, type SQL } from "@cognis/database";
+import { and, asc, db, eq, gte, schemas, sum, type SQL } from "@cognis/database";
 
 import { costMicros, SPEND_LIMITS } from "../config/ai.js";
 import type { DbOrTx } from "./workspaceLock.js";
@@ -109,6 +109,36 @@ export async function checkBudget(
     ]);
 
     return { allowed: spent < limit, spentMicros: spent, limitMicros: limit, scope: "user" };
+}
+
+/**
+ * When the oldest spend in the window rolls off, freeing some allowance again.
+ *
+ * A rolling window has no reset time, so the honest answer to "when can I try
+ * again" is when the earliest charge ages out — not the full window, which would
+ * overstate the wait for someone who spent gradually.
+ */
+export async function nextBudgetReleaseAt(
+    userId: string,
+    kind: UsageKind,
+    executor: DbOrTx = db,
+): Promise<Date | null> {
+    const [row] = await executor
+        .select({ createdAt: schemas.aiUsage.createdAt })
+        .from(schemas.aiUsage)
+        .where(
+            and(
+                eq(schemas.aiUsage.userId, userId),
+                eq(schemas.aiUsage.kind, kind),
+                gte(schemas.aiUsage.createdAt, windowStart()),
+            ),
+        )
+        .orderBy(asc(schemas.aiUsage.createdAt))
+        .limit(1);
+
+    if (!row) return null;
+
+    return new Date(row.createdAt.getTime() + SPEND_LIMITS.windowHours * 60 * 60 * 1000);
 }
 
 export type UsageRecord = {

@@ -1,0 +1,20 @@
+meta {
+  name: Get Chat
+  type: http
+  seq: 3
+}
+
+get {
+  url: {{baseUrl}}/api/chats/{{chatId}}
+  body: none
+  auth: none
+}
+
+docs {
+  The chat with its messages, oldest first.
+
+  Ownership and workspace membership are both checked. A chat that does not
+  exist and one belonging to someone else are both 404, so ids cannot be probed,
+  and being removed from the workspace makes the chats you made in it
+  unreachable.
+}

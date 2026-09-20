@@ -1,0 +1,23 @@
+meta {
+  name: List Chats
+  type: http
+  seq: 2
+}
+
+get {
+  url: {{baseUrl}}/api/workspaces/{{workspaceId}}/chats
+  body: none
+  auth: none
+}
+
+script:post-response {
+  if (res.status === 200 && res.body.data.length > 0) {
+    bru.setVar("chatId", res.body.data[0].id);
+  }
+}
+
+docs {
+  Your own chats only, newest activity first. Chats are private: another
+  member's do not appear here, and the workspace owner has no special view of
+  them.
+}

@@ -373,6 +373,12 @@ Token usage is only known _after_ a request completes, so exact pre-authorisatio
 
 A user can therefore finish slightly over their limit on their final message. That is accepted deliberately. The alternative — charging an estimate up front and reconciling afterwards — is more machinery than this warrants.
 
+**Refusing well matters too.** A rolling window has no reset time, so "try again tomorrow" would be wrong. The `Retry-After` on a refusal is when that caller's _oldest_ charge ages out of the window, which is the moment some allowance genuinely returns — sooner than a full window for anyone who spent gradually.
+
+The two ceilings also fail differently on purpose. A personal allowance is the caller's own to wait out. The global one is not their fault and should not read as though it were, so it says AI features are temporarily unavailable rather than blaming them for a limit they may have contributed nothing to.
+
+Guards run cheapest-first: prove the chat belongs to the caller, then that the traffic is reasonable, then that there is budget. Nothing is written for a request that could not have been answered — a refused message leaves no trace in the conversation.
+
 **One trap:** streamed responses do not report usage by default. The request must explicitly ask for it, or the final chunk arrives without token counts and spending is silently recorded as zero. This gets verified against the installed SDK rather than assumed.
 
 ---

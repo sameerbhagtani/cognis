@@ -33,14 +33,26 @@ docs {
   | folderId | Create Folder, List Folders |
   | noteId | Create Note, List Notes |
   | deletedBatchId | Delete Folder, Delete Note, List Trash |
+  | chatId | Create Chat, List Chats |
 
-  ## Two requests break a sequential run
+  ## Three requests break a sequential run
 
-  Both sit with the resource they belong to rather than being hidden somewhere
+  Each sits with the resource it belongs to rather than being hidden somewhere
   unexpected, so skip them when running the collection end to end:
 
   - **Auth → Sign Out** clears the cookie, so everything after it returns 401.
   - **Workspaces → Delete Workspace** removes the workspace the later folders use.
+  - **Chats → Delete Chat** removes the chat the other chat requests use.
+
+  ## Chat requests cost money
+
+  Everything else here is free to run. Asking a question is billed to the
+  OpenAI account, and writing a note eventually costs a little too, since the
+  embedding worker indexes it.
+
+  Both are capped per user over a rolling 24 hours, with a separate ceiling
+  across all users. **Account → AI Usage** shows where you stand. A refusal is a
+  429 carrying Retry-After, not a failure to fix.
 
   ## Realtime
 

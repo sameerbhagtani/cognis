@@ -1,0 +1,37 @@
+meta {
+  name: Send Message
+  type: http
+  seq: 4
+}
+
+post {
+  url: {{baseUrl}}/api/chats/{{chatId}}/messages
+  body: json
+  auth: none
+}
+
+headers {
+  Content-Type: application/json
+  Origin: {{clientUrl}}
+}
+
+body:json {
+  {
+    "content": "What did I write about deployment?"
+  }
+}
+
+docs {
+  Stores the question. Generating the answer is not wired up yet — that arrives
+  with the streaming work, and the reply will come over the socket rather than
+  in this response.
+
+  content is trimmed, and capped at 4000 characters. A long paste belongs in a
+  note: anything sent here is billed as input again on every later turn of the
+  conversation.
+
+  Three guards run in order — the chat must be yours, the traffic reasonable,
+  and the AI budget not exhausted. A refusal for budget returns 429 with
+  Retry-After set to when your oldest charge ages out of the rolling window, and
+  writes nothing, so a refused question leaves no trace in the chat.
+}

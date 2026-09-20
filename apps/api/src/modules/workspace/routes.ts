@@ -5,6 +5,7 @@ import memberRoutes from "../member/routes.js";
 import { workspaceFolderRoutes } from "../folder/routes.js";
 import { workspaceNoteRoutes } from "../note/routes.js";
 import { workspaceTrashRoutes } from "../trash/routes.js";
+import { workspaceChatRoutes } from "../chat/routes.js";
 
 import requireWorkspaceOwner from "../../shared/middlewares/requireWorkspaceOwner.js";
 import requireWorkspaceRole from "../../shared/middlewares/requireWorkspaceRole.js";
@@ -23,5 +24,6 @@ router.use("/:workspaceId/members", memberRoutes);
 router.use("/:workspaceId/folders", workspaceFolderRoutes);
 router.use("/:workspaceId/notes", workspaceNoteRoutes);
 router.use("/:workspaceId/trash", workspaceTrashRoutes);
+router.use("/:workspaceId/chats", workspaceChatRoutes);
 
 export default router;
