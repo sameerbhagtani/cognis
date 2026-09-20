@@ -4,7 +4,6 @@ import * as trashController from "./controller.js";
 
 import requireWorkspaceRole from "../../shared/middlewares/requireWorkspaceRole.js";
 import { MEMBER_ROLES } from "../../shared/services/workspaceAccess.js";
-import { rateLimitByUser } from "../../shared/middlewares/rateLimit.js";
 
 // Workspace-scoped: mounted under /workspaces/:workspaceId/trash.
 export const workspaceTrashRoutes = Router({ mergeParams: true });
@@ -15,6 +14,7 @@ workspaceTrashRoutes.get("/", requireWorkspaceRole(MEMBER_ROLES), trashControlle
 // the role check happens in the controller once that's known.
 export const trashRoutes = Router();
 
-// The workspace isn't known until the controller resolves it from the batch, so
-// this leans on the per-user limit rather than a per-workspace one.
-trashRoutes.post("/:deletedBatchId/restore", rateLimitByUser, trashController.restoreTrashBatch);
+// No bucket of its own: the per-user limit already applies to everything under
+// /api, and the workspace-scoped one can't be mounted here because the workspace
+// isn't known until the controller resolves it from the batch.
+trashRoutes.post("/:deletedBatchId/restore", trashController.restoreTrashBatch);
