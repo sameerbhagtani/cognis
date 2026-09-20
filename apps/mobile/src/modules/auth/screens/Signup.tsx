@@ -58,7 +58,7 @@ export default function Signup() {
     }
 
     const getBorderColor = (field: string, error?: any) => {
-        if (error) return "#EF4444"; // Red for error
+        if (error) return theme.danger;
         return focusedField === field ? theme.primary : theme.subtleBorder;
     };
 
@@ -280,14 +280,14 @@ function createStyles(theme: Theme, isLandscape: boolean) {
         // API Error
         errorContainer: {
             padding: 12,
-            backgroundColor: "rgba(239, 68, 68, 0.1)",
+            backgroundColor: `${theme.danger}1a`,
             borderWidth: 1,
-            borderColor: "rgba(239, 68, 68, 0.5)",
+            borderColor: `${theme.danger}80`,
             borderRadius: 12,
             marginBottom: 16,
         },
         errorTextGlobal: {
-            color: "#EF4444",
+            color: theme.danger,
             fontSize: 14,
             textAlign: "center",
         },
@@ -316,7 +316,7 @@ function createStyles(theme: Theme, isLandscape: boolean) {
             backgroundColor: theme.inputBg,
         },
         errorText: {
-            color: "#EF4444",
+            color: theme.danger,
             fontSize: 12,
             marginTop: 4,
             marginLeft: 4,

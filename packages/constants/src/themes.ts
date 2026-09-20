@@ -6,11 +6,10 @@ export const dark: Theme = {
 
     primary: "#10B981",
     secondary: "#064E3B",
+    danger: "#F87171",
 
     subtleBorder: "#f0f0f026",
     inputBg: "#ffffff0d",
-
-    color: "#fff",
 };
 
 export const light: Theme = {
@@ -19,9 +18,8 @@ export const light: Theme = {
 
     primary: "#10B981",
     secondary: "#064E3B",
+    danger: "#DC2626",
 
     subtleBorder: "#10101026",
     inputBg: "#00000008",
-
-    color: "#000",
 };

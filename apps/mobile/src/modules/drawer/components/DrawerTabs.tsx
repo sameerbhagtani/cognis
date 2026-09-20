@@ -60,6 +60,6 @@ const createStyles = (theme: Theme) =>
             color: theme.foreground,
         },
         activeTabText: {
-            color: theme.color,
+            color: theme.foreground,
         },
     });
