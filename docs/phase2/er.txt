@@ -1,0 +1,190 @@
+user [icon: user, color: green] {
+  id TEXT PRIMARY KEY
+
+  name TEXT NOT NULL
+  email TEXT NOT NULL UNIQUE
+  emailVerified BOOLEAN NOT NULL
+  image TEXT
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+workspace [icon: blocks, color: blue] {
+  id UUID PRIMARY KEY
+  ownerId TEXT NOT NULL ON DELETE CASCADE
+
+  name VARCHAR(50) NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+user.id < workspace.ownerId
+
+workspace_member [icon: user, color: blue] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  userId TEXT NOT NULL ON DELETE CASCADE
+
+  role ENUM('owner', 'editor', 'viewer') NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (userId)
+  // UNIQUE (workspaceId, userId)
+}
+
+workspace.id < workspace_member.workspaceId
+user.id < workspace_member.userId
+
+folder [icon: folder, color: yellow] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  parentFolderId UUID ON DELETE CASCADE
+
+  name VARCHAR(50) NOT NULL
+
+  deletedAt TIMESTAMP
+  deletedBatchId UUID
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (parentFolderId)
+  // INDEX (workspaceId, deletedAt)
+  // INDEX (deletedBatchId)
+}
+
+workspace.id < folder.workspaceId
+folder.id < folder.parentFolderId
+
+note [icon: document, color: pink] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  folderId UUID ON DELETE CASCADE
+
+  title VARCHAR(50) NOT NULL
+  content TEXT
+
+  deletedAt TIMESTAMP
+  deletedBatchId UUID
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (folderId)
+  // INDEX (workspaceId, deletedAt)
+  // INDEX (deletedBatchId)
+}
+
+workspace.id < note.workspaceId
+folder.id < note.folderId
+
+chat [icon: message-circle, color: purple] {
+  id UUID PRIMARY KEY
+
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+  userId TEXT NOT NULL ON DELETE CASCADE
+
+  title VARCHAR(100) NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+
+  // INDEX (userId, updatedAt DESC)
+  // INDEX (workspaceId, userId)
+}
+
+workspace.id < chat.workspaceId
+user.id < chat.userId
+
+message [icon: message-square, color: purple] {
+  id UUID PRIMARY KEY
+
+  chatId UUID NOT NULL ON DELETE CASCADE
+
+  role ENUM('user', 'assistant') NOT NULL
+  content TEXT NOT NULL
+  citedNoteIds UUID[]
+
+  createdAt TIMESTAMP NOT NULL
+
+  // INDEX (chatId, createdAt)
+}
+
+chat.id < message.chatId
+
+note_chunk [icon: layers, color: orange] {
+  id UUID PRIMARY KEY
+
+  noteId UUID NOT NULL ON DELETE CASCADE
+  workspaceId UUID NOT NULL ON DELETE CASCADE
+
+  chunkIndex INTEGER NOT NULL
+  content TEXT NOT NULL
+  embedding VECTOR(1536) NOT NULL
+
+  createdAt TIMESTAMP NOT NULL
+
+  // INDEX (workspaceId)
+  // INDEX USING hnsw (embedding vector_cosine_ops)
+  // UNIQUE (noteId, chunkIndex)
+}
+
+note.id < note_chunk.noteId
+workspace.id < note_chunk.workspaceId
+
+note_embedding_state [icon: refresh-cw, color: orange] {
+  noteId UUID PRIMARY KEY ON DELETE CASCADE
+
+  sourceUpdatedAt TIMESTAMP NOT NULL
+  contentHash TEXT NOT NULL
+  chunkCount INTEGER NOT NULL
+
+  embeddedAt TIMESTAMP NOT NULL
+}
+
+note.id - note_embedding_state.noteId
+
+ai_usage [icon: dollar-sign, color: red] {
+  id UUID PRIMARY KEY
+
+  userId TEXT NOT NULL ON DELETE CASCADE
+  workspaceId UUID ON DELETE SET NULL
+
+  kind ENUM('completion', 'embedding') NOT NULL
+  model VARCHAR(100) NOT NULL
+
+  inputTokens INTEGER NOT NULL
+  outputTokens INTEGER NOT NULL
+
+  messageId UUID ON DELETE SET NULL
+  noteId UUID ON DELETE SET NULL
+
+  createdAt TIMESTAMP NOT NULL
+
+  // INDEX (userId, createdAt)
+}
+
+user.id < ai_usage.userId
+workspace.id < ai_usage.workspaceId
+message.id < ai_usage.messageId
+note.id < ai_usage.noteId
+
+user_ai_limit [icon: sliders, color: red] {
+  userId TEXT PRIMARY KEY ON DELETE CASCADE
+
+  chatDailyMicros INTEGER
+  indexingDailyMicros INTEGER
+  note TEXT
+
+  createdAt TIMESTAMP NOT NULL
+  updatedAt TIMESTAMP NOT NULL
+}
+
+user.id - user_ai_limit.userId
