@@ -28,6 +28,23 @@ export function contentHash(title: string, content: string | null): string {
 }
 
 /**
+ * Copies note.updated_at through the database rather than through JavaScript.
+ *
+ * Postgres timestamps hold microseconds; a JS Date holds milliseconds. Reading
+ * the note in Node and writing that Date back truncates the value, leaving
+ * source_updated_at permanently *less* than updated_at — so the note reads as
+ * stale forever, is re-examined on every poll, and, because candidates are
+ * taken oldest-first in a bounded batch, eventually crowds out notes that have
+ * genuinely changed.
+ *
+ * The note row is held FOR UPDATE for the whole transaction, so this subquery
+ * sees exactly the value that was read.
+ */
+function currentUpdatedAt(noteId: string) {
+    return sql<Date>`(SELECT ${schemas.note.updatedAt} FROM ${schemas.note} WHERE ${schemas.note.id} = ${noteId})`;
+}
+
+/**
  * Brings one note's embeddings up to date. Safe to call from anywhere, as often
  * as you like — the hash check at the top makes a redundant call cost a read.
  *
@@ -37,10 +54,9 @@ export function contentHash(title: string, content: string | null): string {
  * embed the same note concurrently, and at one worker doing serial batches the
  * pool pressure is nil. Revisit if embedding throughput ever matters.
  *
- * sourceUpdatedAt records the updatedAt seen at the start, not the time of
- * writing. If the note changed while the API call was in flight, its current
- * updatedAt is now ahead of what was recorded, so it reads as stale and gets
- * picked up again. Self-correcting, with no second read needed.
+ * sourceUpdatedAt records the note's own updated_at rather than the time of
+ * writing, so a note is "caught up" exactly when its embeddings match the
+ * revision they were built from.
  */
 export async function embedNote(noteId: string): Promise<EmbedResult> {
     return db.transaction(async (tx) => {
@@ -76,7 +92,7 @@ export async function embedNote(noteId: string): Promise<EmbedResult> {
         if (state && state.contentHash === hash) {
             await tx
                 .update(schemas.noteEmbeddingState)
-                .set({ sourceUpdatedAt: note.updatedAt })
+                .set({ sourceUpdatedAt: currentUpdatedAt(noteId) })
                 .where(eq(schemas.noteEmbeddingState.noteId, noteId));
 
             return { outcome: "unchanged" };
@@ -107,7 +123,7 @@ export async function embedNote(noteId: string): Promise<EmbedResult> {
             .insert(schemas.noteEmbeddingState)
             .values({
                 noteId,
-                sourceUpdatedAt: note.updatedAt,
+                sourceUpdatedAt: currentUpdatedAt(noteId),
                 contentHash: hash,
                 chunkCount: chunks.length,
                 embeddedAt: new Date(),
@@ -115,7 +131,7 @@ export async function embedNote(noteId: string): Promise<EmbedResult> {
             .onConflictDoUpdate({
                 target: schemas.noteEmbeddingState.noteId,
                 set: {
-                    sourceUpdatedAt: note.updatedAt,
+                    sourceUpdatedAt: currentUpdatedAt(noteId),
                     contentHash: hash,
                     chunkCount: chunks.length,
                     embeddedAt: new Date(),

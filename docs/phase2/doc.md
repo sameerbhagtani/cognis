@@ -2,7 +2,7 @@
 
 **Chat with your notes.** Inside a workspace, ask an AI questions and get answers grounded in the notes that live there.
 
-Unlike the Phase 1 document, this one describes what is _planned_, not what is built. It will be rewritten to match reality once the work lands, the way the Phase 1 doc was.
+This describes the Phase 2 backend as it is built, not as it was planned. Everything here exists in `apps/api` unless a section says otherwise.
 
 ---
 
@@ -161,6 +161,12 @@ Holding that transaction across the embedding API call does mean holding a datab
 
 **Backfill comes free.** Notes written before Phase 2 have no state row, which makes them stale by definition. The worker picks them up on its first run. No separate migration script.
 
+**The revision marker is copied through the database, never through JavaScript.** Postgres timestamps hold microseconds; a JavaScript `Date` holds milliseconds. Reading `note.updated_at` in Node and writing it back truncates it, leaving `source_updated_at` permanently _less_ than `updated_at` — so the note reads as stale forever.
+
+That sounds harmless, because the content hash keeps a needless pass free of API calls. It is not. Candidates are taken oldest-first in a bounded batch, so once enough notes are permanently stale they fill every batch and notes that have genuinely changed never get embedded at all — silently, with nothing in the logs. Every note created by `defaultNow()` and not yet edited has a microsecond timestamp, so this is the common case rather than an edge one.
+
+The fix is to write the value with a subquery against the note itself, under the row lock the embed already holds, so the exact stored value is copied rather than a truncated copy of it.
+
 **A ceiling per note.** Above a certain content length, only the first N chunks are embedded. A pasted book should not quietly cost a fortune.
 
 ---
@@ -256,14 +262,16 @@ An assistant message stores the ids of notes its answer drew on, so the client c
 
 ## API
 
-| Endpoint                              | Who              | Notes                                      |
-| ------------------------------------- | ---------------- | ------------------------------------------ |
-| `POST /workspaces/:workspaceId/chats` | any member       | Creates a chat                             |
-| `GET /workspaces/:workspaceId/chats`  | any member       | Your chats in this workspace, newest first |
-| `GET /chats/:chatId`                  | the chat's owner | Chat plus its messages                     |
-| `DELETE /chats/:chatId`               | the chat's owner | Immediate and permanent                    |
-| `POST /chats/:chatId/messages`        | the chat's owner | Sends a question, triggers the model       |
-| `GET /me/ai-usage`                    | any user         | Spend used, limits, when the window rolls  |
+| Endpoint                              | Who              | Notes                                               |
+| ------------------------------------- | ---------------- | --------------------------------------------------- |
+| `POST /workspaces/:workspaceId/chats` | any member       | Creates a chat                                      |
+| `GET /workspaces/:workspaceId/chats`  | any member       | Your chats in this workspace, newest first          |
+| `GET /chats/:chatId`                  | the chat's owner | Chat plus its messages                              |
+| `DELETE /chats/:chatId`               | the chat's owner | Immediate and permanent                             |
+| `POST /chats/:chatId/messages`        | the chat's owner | Asks a question; the answer arrives over the socket |
+| `GET /me/ai-usage`                    | any user         | Spend used, limits, when the window rolls           |
+
+**Sending a message does not wait for the answer.** The request returns as soon as the question is stored, with `{ message, assistantMessageId }`. That id is the one the assistant's message _will_ have, so a client can follow the stream for a row that does not exist yet. Generation then runs detached and never rejects into the request that started it — every failure reaches the client as `chat:error` instead.
 
 **Viewers can chat.** Chatting is reading, and a viewer can already read every note in the workspace. Nothing is exposed that they could not open directly.
 
@@ -275,18 +283,20 @@ An assistant message stores the ids of notes its answer drew on, so the client c
 
 ## Realtime
 
-Clients join a room per chat, the same shape as `workspace:join` and with the same server-side check — you may only join a chat you own.
+A socket is authenticated at the handshake exactly as Phase 1 describes — the Better Auth session is read from the connection's cookie, and a socket without a valid one never connects. Clients then join a room per chat, the same shape as `workspace:join`, with the check done on the server: you may only join a chat you own, in a workspace you still belong to.
+
+`truncated` is true when the answer stopped because it hit the token cap rather than because it finished.
 
 **Client sends:** `chat:join`, `chat:leave`. Nothing else, as before.
 
 **Server sends:**
 
-| Event                    | Payload                                        |
-| ------------------------ | ---------------------------------------------- |
-| `chat:message_started`   | `{ chatId, messageId }`                        |
-| `chat:token`             | `{ chatId, messageId, delta }`                 |
-| `chat:message_completed` | `{ chatId, messageId, content, citedNoteIds }` |
-| `chat:error`             | `{ chatId, messageId, message }`               |
+| Event                    | Payload                                                   |
+| ------------------------ | --------------------------------------------------------- |
+| `chat:message_started`   | `{ chatId, messageId }`                                   |
+| `chat:token`             | `{ chatId, messageId, delta }`                            |
+| `chat:message_completed` | `{ chatId, messageId, content, citedNoteIds, truncated }` |
+| `chat:error`             | `{ chatId, messageId, message }`                          |
 
 Joining by chat rather than by user means several devices open on the same conversation all follow the stream, while chats you are not looking at cost nothing.
 
@@ -436,29 +446,19 @@ If the worker is not running, notes still get embedded by the in-process debounc
 
 ### Granting someone a higher limit
 
-A one-shot entrypoint, in the style of the purge job:
+A one-shot entrypoint in the style of the purge job, run from source since it is an operator action rather than part of the running server:
 
 ```
-pnpm ai:limit someone@example.com --chat 150000 --indexing 30000
+pnpm ai:limit you@example.com --chat 150000 --indexing 30000
+pnpm ai:limit you@example.com --show
+pnpm ai:limit you@example.com --clear
 ```
 
-It writes a `user_ai_limit` row, validating that the user exists first, so raising your own limit does not mean hand-writing SQL.
+Amounts are micro-dollars per rolling day, so 1000000 is a dollar. It checks the user exists first and prints the budgets afterwards, marking each as an override or a default, so raising your own limit is never a matter of hand-writing SQL against the limits table.
 
----
+Each budget is independent. Passing only `--chat` leaves indexing on whatever it had, which is the point of the two columns being separately nullable. The address is matched the same way Better Auth stores it, so a capitalised argument still finds the account.
 
-## Build order
-
-Each step is reviewed before the next begins.
-
-| Step    | What lands                                                                 |
-| ------- | -------------------------------------------------------------------------- |
-| **2.1** | `pgvector` image, extension, all six tables, HNSW index. No behaviour.     |
-| **2.2** | Splitting, embedding, content hashing, the debounce, the worker, backfill. |
-| **2.3** | Retrieval, the note index, context assembly, follow-up rewriting.          |
-| **2.4** | Chat and message endpoints, ownership rules, spend ledger and limits.      |
-| **2.5** | The model call, streaming over the socket, citations, usage recording.     |
-
-Steps 2.1 through 2.4 cost nothing to run beyond embeddings. The first real spending starts at 2.5.
+There is no endpoint for this. Giving it one would mean building an admin role to guard it, and this is rare enough to belong on the command line.
 
 ---
 

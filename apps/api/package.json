@@ -10,6 +10,7 @@
         "purge:dev": "tsx src/jobs/purgeTrash.ts",
         "embed": "node dist/jobs/embedNotes.js",
         "embed:dev": "tsx src/jobs/embedNotes.ts",
+        "ai:limit": "tsx src/jobs/setAiLimit.ts",
         "lint": "eslint .",
         "check-types": "tsc --noEmit"
     },

@@ -22,9 +22,11 @@ body:json {
 }
 
 docs {
-  Stores the question. Generating the answer is not wired up yet — that arrives
-  with the streaming work, and the reply will come over the socket rather than
-  in this response.
+  Stores the question and starts the answer. The response comes back
+  immediately with the stored message and an assistantMessageId — the id the
+  reply will have — because the answer streams over the socket rather than in
+  this response. Bruno cannot follow that; reload Get Chat once it has finished
+  and the reply will be there.
 
   content is trimmed, and capped at 4000 characters. A long paste belongs in a
   note: anything sent here is billed as input again on every later turn of the
