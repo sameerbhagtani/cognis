@@ -1,6 +1,8 @@
 # Cognis
 
-Cognis is a note taking app that lets you ask questions about your own notes. You write and organise notes the way you would in any editor, and an assistant answers questions using those notes as its only source. Think of it as a personal knowledge base you can talk to.
+**A collaborative note taking app that doubles as your second brain.**
+
+Write and organise notes with your team, then ask questions about them in plain language. An AI assistant answers from your notes alone and cites the ones it used, turning a folder of documents into something you can actually talk to.
 
 Website: [cognis.in](https://cognis.in)
 
@@ -95,12 +97,6 @@ jobs/           Standalone scripts run outside the server
 | `ai_usage`             | One row per paid AI call, used for spend limits.                                      |
 | `user_ai_limit`        | Per user overrides of the default spend limits.                                       |
 
-A few things worth knowing:
-
-- Folders and notes are soft deleted. They keep a `deletedAt` timestamp and a batch id shared with everything deleted in the same action.
-- Deleting a workspace removes everything inside it, including chats.
-- Removing someone from a workspace does not delete the chats they created there, but they can no longer reach them.
-
 ## How it works
 
 ### Writing and reading
@@ -143,18 +139,6 @@ question
    -> stream the answer back over the WebSocket
    -> save the answer along with the notes it used
 ```
-
-Some notes on the steps above:
-
-**Follow ups are rewritten.** A reply like "yes" or "tell me more" carries no meaning on its own, so searching for it would return nothing useful. Before searching, those are turned into a standalone question using the conversation so far. Changing the subject works correctly too, the old topic is not carried over.
-
-**Small workspaces skip search.** If everything fits comfortably, every note is sent in full. Nothing can be missed by a search that ranked poorly, and broad questions like "summarise what I worked on" are answered properly. Past that size, search takes over.
-
-**The note list is always included.** Even when the assistant only reads a few excerpts, it is told the name of every note in the workspace. That way it can say "you have a note called Deployment checklist, shall I read it?" rather than claiming it knows nothing.
-
-**Search never crosses a workspace.** Only notes in the current workspace are searchable, and trashed notes are excluded.
-
-**The answer streams.** Sending a message returns straight away with the id the reply will have. The text then arrives token by token over the WebSocket. The reply is saved on the server whether or not anyone is listening, so a dropped connection just means reloading the chat to find it there.
 
 ## API reference
 
@@ -336,61 +320,61 @@ Amounts are in micro dollars per day, so 1000000 is one dollar. Each budget is i
 
 1. Install dependencies.
 
-    ```bash
-    pnpm install
-    ```
+```bash
+pnpm install
+```
 
 2. Create the environment files.
 
-    ```bash
-    cp apps/api/.env.example apps/api/.env
-    cp packages/database/.env.example packages/database/.env
-    ```
+```bash
+cp apps/api/.env.example apps/api/.env
+cp packages/database/.env.example packages/database/.env
+```
 
-    Then fill in `apps/api/.env`:
+Then fill in `apps/api/.env`:
 
-    | Variable               | Notes                                              |
-    | ---------------------- | -------------------------------------------------- |
-    | `DATABASE_URL`         | Matches the Docker setup out of the box            |
-    | `BETTER_AUTH_SECRET`   | Any long random string                             |
-    | `BETTER_AUTH_URL`      | The API's own URL, `http://localhost:5000` locally |
-    | `CLIENT_URL`           | Where the frontend runs, used for CORS             |
-    | `OPENAI_API_KEY`       | Required for chat and search                       |
-    | `BREVO_API_KEY`        | Required for verification and invite emails        |
-    | `EMAIL_FROM_ADDRESS`   | The sender address                                 |
-    | `TRASH_RETENTION_DAYS` | How long trashed items are kept, defaults to 30    |
+| Variable               | Notes                                              |
+| ---------------------- | -------------------------------------------------- |
+| `DATABASE_URL`         | Matches the Docker setup out of the box            |
+| `BETTER_AUTH_SECRET`   | Any long random string                             |
+| `BETTER_AUTH_URL`      | The API's own URL, `http://localhost:5000` locally |
+| `CLIENT_URL`           | Where the frontend runs, used for CORS             |
+| `OPENAI_API_KEY`       | Required for chat and search                       |
+| `BREVO_API_KEY`        | Required for verification and invite emails        |
+| `EMAIL_FROM_ADDRESS`   | The sender address                                 |
+| `TRASH_RETENTION_DAYS` | How long trashed items are kept, defaults to 30    |
 
-    `packages/database/.env` only needs `DATABASE_URL`, matching the one above.
+`packages/database/.env` only needs `DATABASE_URL`, matching the one above.
 
 3. Start PostgreSQL.
 
-    ```bash
-    pnpm db:up
-    ```
+```bash
+pnpm db:up
+```
 
-    This runs a `pgvector/pgvector:pg17` container. The standard Postgres image does not include the vector extension, so the project will not work with it.
+This runs a `pgvector/pgvector:pg17` container. The standard Postgres image does not include the vector extension, so the project will not work with it.
 
 4. Apply the migrations.
 
-    ```bash
-    pnpm db:migrate
-    ```
+```bash
+pnpm db:migrate
+```
 
 5. Start the apps.
 
-    ```bash
-    pnpm dev
-    ```
+```bash
+pnpm dev
+```
 
     The API runs on port 5000 by default.
 
 6. In a second terminal, start the note indexing worker.
 
-    ```bash
-    pnpm --filter @cognis/api embed:dev
-    ```
+```bash
+pnpm --filter @cognis/api embed:dev
+```
 
-    Without it, notes are still indexed while the API is running, but anything missed during a restart stays unindexed.
+Without it, notes are still indexed while the API is running, but anything missed during a restart stays unindexed.
 
 ### Useful commands
 
