@@ -7,6 +7,7 @@ import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import useTheme from "@/lib/theme/useTheme";
 import { CognisEditor, EditorToolbar, type CognisEditorHandle } from "@/modules/editor";
+import { handleSignout } from "@/modules/auth/api";
 
 import type { EditorCommand } from "@cognis/editor-web/protocol";
 
@@ -40,6 +41,11 @@ export default function Index() {
             <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
                 <StatusBar style="auto" />
                 <View style={styles.header}>
+                    {/* Temporary — belongs in Settings once that screen exists. Here
+                     *  purely so auth flows are testable without clearing app data. */}
+                    <Pressable onPress={() => handleSignout()} hitSlop={8}>
+                        <MaterialCommunityIcons name="logout" size={22} color={theme.foreground} />
+                    </Pressable>
                     <Pressable onPress={() => setReadOnly((prev) => !prev)} hitSlop={8}>
                         <MaterialCommunityIcons
                             name={readOnly ? "pencil-outline" : "book-open-variant"}
@@ -79,7 +85,7 @@ const styles = StyleSheet.create({
     },
     header: {
         flexDirection: "row",
-        justifyContent: "flex-end",
+        justifyContent: "space-between",
         paddingHorizontal: 16,
         paddingVertical: 8,
     },

@@ -5,7 +5,7 @@ export default function AuthLayout() {
     const { theme } = useTheme();
     return (
         <Stack
-            initialRouteName="signup"
+            initialRouteName="signin"
             screenOptions={{
                 headerShown: false,
                 contentStyle: {
@@ -16,6 +16,9 @@ export default function AuthLayout() {
         >
             <Stack.Screen name="signup" />
             <Stack.Screen name="signin" />
+            <Stack.Screen name="verify-email" />
+            <Stack.Screen name="forgot-password" />
+            <Stack.Screen name="reset-password" />
         </Stack>
     );
 }
