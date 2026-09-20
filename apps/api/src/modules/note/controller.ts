@@ -2,7 +2,6 @@ import * as noteService from "./service.js";
 import { noteOf } from "./middleware.js";
 import { createNoteSchema, listNotesQuerySchema, updateNoteSchema } from "./validation.js";
 
-import { getLiveFolder } from "../folder/service.js";
 import { restoreBatch } from "../../shared/services/trash.js";
 import { emitBatchRestored, emitNoteUpdated, emitToWorkspace } from "../../realtime/emitter.js";
 import ApiError from "../../shared/utils/ApiError.js";
@@ -17,11 +16,9 @@ export async function createNote(req: Request<WorkspaceParams>, res: Response) {
     const { workspaceId } = req.params;
     const { title, content, folderId } = createNoteSchema.parse(req.body);
 
-    if (folderId) {
-        const folder = await getLiveFolder(workspaceId, folderId);
-        if (!folder) throw ApiError.notFound("Folder not found");
-    }
-
+    // The folder check lives in the service alongside the insert: checking here
+    // would leave a gap for a concurrent delete to trash the folder before the
+    // row lands.
     const note = await noteService.createNote({
         workspaceId,
         folderId: folderId ?? null,
@@ -55,12 +52,10 @@ export async function updateNote(req: Request<NoteParams>, res: Response) {
 
     if (note.deletedAt) throw ApiError.notFound("Note not found");
 
-    if (folderId !== undefined && folderId !== null) {
-        const folder = await getLiveFolder(note.workspaceId, folderId);
-        if (!folder) throw ApiError.notFound("Folder not found");
-    }
-
-    const updated = await noteService.updateNote(note.id, {
+    // The target folder check lives in the service alongside the write, for the
+    // same reason a folder move's does: checking here would leave a gap for a
+    // concurrent delete to trash that folder before the move lands.
+    const updated = await noteService.applyNoteUpdate(note, {
         ...(title !== undefined && { title }),
         ...(content !== undefined && { content }),
         ...(folderId !== undefined && { folderId }),

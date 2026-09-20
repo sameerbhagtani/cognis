@@ -89,17 +89,46 @@ export async function listFolders(workspaceId: string, parentFolderId?: string |
         .orderBy(asc(schemas.folder.name));
 }
 
+/**
+ * A create can't form a cycle — a new folder has no descendants — but it can
+ * still strand a row. Checking that the parent is live and then inserting
+ * outside a transaction leaves a window for a concurrent soft delete to trash
+ * that parent, and the insert then lands a live folder under a trashed one:
+ * missing from the tree because its parent is gone, and missing from the trash
+ * because it was never deleted. That is the same orphan the restore guard
+ * exists to prevent, so the check and the insert share the workspace lock the
+ * way a move's do.
+ *
+ * A root-level create has no parent to be trashed underneath it, so it skips
+ * the lock and inserts directly.
+ */
 export async function createFolder(
     workspaceId: string,
     name: string,
     parentFolderId: string | null,
 ) {
-    const [created] = await db
-        .insert(schemas.folder)
-        .values({ workspaceId, name, parentFolderId })
-        .returning();
+    if (parentFolderId === null) {
+        const [created] = await db
+            .insert(schemas.folder)
+            .values({ workspaceId, name, parentFolderId })
+            .returning();
 
-    return created;
+        return created;
+    }
+
+    return db.transaction(async (tx) => {
+        await lockWorkspace(tx, workspaceId);
+
+        const parent = await getLiveFolder(workspaceId, parentFolderId, tx);
+        if (!parent) throw ApiError.notFound("Parent folder not found");
+
+        const [created] = await tx
+            .insert(schemas.folder)
+            .values({ workspaceId, name, parentFolderId })
+            .returning();
+
+        return created;
+    });
 }
 
 async function writeFolder(

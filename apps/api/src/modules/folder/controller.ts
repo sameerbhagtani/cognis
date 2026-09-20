@@ -16,11 +16,9 @@ export async function createFolder(req: Request<WorkspaceParams>, res: Response)
     const { workspaceId } = req.params;
     const { name, parentFolderId } = createFolderSchema.parse(req.body);
 
-    if (parentFolderId) {
-        const parent = await folderService.getLiveFolder(workspaceId, parentFolderId);
-        if (!parent) throw ApiError.notFound("Parent folder not found");
-    }
-
+    // The parent check lives in the service alongside the insert, for the same
+    // reason a move's does: checking here would leave a gap for a concurrent
+    // delete to trash the parent before the row lands.
     const folder = await folderService.createFolder(workspaceId, name, parentFolderId ?? null);
 
     emitToWorkspace(workspaceId, "folder:created", folder);

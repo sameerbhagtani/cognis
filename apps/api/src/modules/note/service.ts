@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { and, asc, db, eq, getColumns, isNull, schemas } from "@cognis/database";
 
-import { lockWorkspace } from "../../shared/services/workspaceLock.js";
+import { getLiveFolder } from "../folder/service.js";
+import { lockWorkspace, type DbOrTx } from "../../shared/services/workspaceLock.js";
+import ApiError from "../../shared/utils/ApiError.js";
 
 export type Note = typeof schemas.note.$inferSelect;
 
@@ -47,28 +49,82 @@ export async function listNotes(workspaceId: string, folderId?: string | null) {
         .orderBy(asc(schemas.note.title));
 }
 
+/**
+ * Locked for the same reason a folder create is: checking that the folder is
+ * live and then inserting outside a transaction lets a concurrent soft delete
+ * trash that folder in between, leaving a live note inside a trashed one —
+ * absent from the tree and absent from the trash. A note at the workspace root
+ * has no folder to be trashed underneath it, so it inserts directly.
+ */
 export async function createNote(values: {
     workspaceId: string;
     folderId: string | null;
     title: string;
     content: string | null;
 }) {
-    const [created] = await db.insert(schemas.note).values(values).returning();
+    const { workspaceId, folderId } = values;
 
-    return created;
+    if (folderId === null) {
+        const [created] = await db.insert(schemas.note).values(values).returning();
+
+        return created;
+    }
+
+    return db.transaction(async (tx) => {
+        await lockWorkspace(tx, workspaceId);
+
+        const folder = await getLiveFolder(workspaceId, folderId, tx);
+        if (!folder) throw ApiError.notFound("Folder not found");
+
+        const [created] = await tx.insert(schemas.note).values(values).returning();
+
+        return created;
+    });
 }
 
-export async function updateNote(
+async function writeNote(
+    executor: DbOrTx,
     noteId: string,
     values: { title?: string; content?: string | null; folderId?: string | null },
 ) {
-    const [updated] = await db
+    const [updated] = await executor
         .update(schemas.note)
         .set(values)
         .where(eq(schemas.note.id, noteId))
         .returning();
 
     return updated;
+}
+
+/**
+ * A title or content edit reads no tree structure, so it writes directly. That
+ * also keeps autosave — by far the most frequent write here — off the workspace
+ * lock, where it would serialize against every move, delete and restore in the
+ * workspace.
+ *
+ * A move is the case that needs the lock: checking the target folder is live and
+ * then writing outside a transaction lets a concurrent delete trash that folder
+ * in between, leaving the note live inside a trashed one. Same orphan a folder
+ * move guards against, reached through the note instead.
+ */
+export async function applyNoteUpdate(
+    note: Note,
+    values: { title?: string; content?: string | null; folderId?: string | null },
+) {
+    const { folderId } = values;
+
+    if (folderId === undefined) return writeNote(db, note.id, values);
+
+    return db.transaction(async (tx) => {
+        await lockWorkspace(tx, note.workspaceId);
+
+        if (folderId !== null) {
+            const folder = await getLiveFolder(note.workspaceId, folderId, tx);
+            if (!folder) throw ApiError.notFound("Folder not found");
+        }
+
+        return writeNote(tx, note.id, values);
+    });
 }
 
 /**
