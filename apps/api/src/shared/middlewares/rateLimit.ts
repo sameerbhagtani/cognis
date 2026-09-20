@@ -97,18 +97,26 @@ export function rateLimitWorkspaceWrite(getWorkspaceId: (req: Request) => string
 /**
  * Keyed by the address being written to, not the account doing the writing, so
  * repeatedly adding and removing someone can't be used to fill their inbox.
+ *
+ * The key comes from the caller rather than being read off the body here, so it
+ * is the same normalized address the handler looks the user up by. Deriving it in
+ * both places is how the two drifted apart: this one lowercased, the lookup
+ * didn't, and an invite typed with a capital letter was limited under one key and
+ * queried under another.
  */
-export async function rateLimitMemberInvite(req: Request, res: Response, next: NextFunction) {
-    const email = (req.body as { email?: unknown })?.email;
+export function rateLimitMemberInvite(getEmail: (req: Request) => string | undefined) {
+    return async function memberInviteLimiter(req: Request, res: Response, next: NextFunction) {
+        const email = getEmail(req);
 
-    if (typeof email === "string") {
-        await consumeRateLimit(
-            res,
-            limiters.memberInvite,
-            email.toLowerCase(),
-            "This address has been invited too many times recently",
-        );
-    }
+        if (email) {
+            await consumeRateLimit(
+                res,
+                limiters.memberInvite,
+                email,
+                "This address has been invited too many times recently",
+            );
+        }
 
-    next();
+        next();
+    };
 }

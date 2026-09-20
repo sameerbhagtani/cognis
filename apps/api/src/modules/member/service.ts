@@ -1,5 +1,7 @@
 import { and, db, eq, schemas } from "@cognis/database";
 
+import normalizeEmail from "../../shared/utils/normalizeEmail.js";
+
 import type { WorkspaceRole } from "../../shared/services/workspaceAccess.js";
 
 export async function listMembers(workspaceId: string) {
@@ -21,11 +23,17 @@ export async function listMembers(workspaceId: string) {
         .orderBy(schemas.user.name);
 }
 
+/**
+ * Normalized here as well as in the schema, because the invariant being matched
+ * belongs to the table: Better Auth stores every email lowercased, so an exact
+ * comparison against raw input misses a user who exists. Idempotent, so the
+ * schema having already done it costs nothing.
+ */
 export async function findUserByEmail(email: string) {
     const [user] = await db
         .select({ id: schemas.user.id, email: schemas.user.email })
         .from(schemas.user)
-        .where(eq(schemas.user.email, email))
+        .where(eq(schemas.user.email, normalizeEmail(email)))
         .limit(1);
 
     return user ?? null;
