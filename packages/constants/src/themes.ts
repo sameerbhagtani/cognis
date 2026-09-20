@@ -2,7 +2,7 @@ import type { Theme } from "@cognis/types";
 
 export const dark: Theme = {
     foreground: "#f0f0f0",
-    background: "#101010",
+    background: "#1c1c1e",
 
     primary: "#10B981",
     secondary: "#064E3B",

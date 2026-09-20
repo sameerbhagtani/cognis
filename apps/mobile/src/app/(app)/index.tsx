@@ -6,6 +6,7 @@ import { useNavigation } from "expo-router";
 import { DrawerActions } from "@react-navigation/native";
 
 import useTheme from "@/lib/theme/useTheme";
+import { CongnisEditor } from "@/modules/editor";
 
 export default function Index() {
     const navigation = useNavigation();
@@ -13,9 +14,10 @@ export default function Index() {
 
     return (
         <>
-            <StatusBar style={themeMode === "dark" ? "light" : "dark"} />
-            <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
-                <View style={styles.buttonContainer}>
+            {/* <StatusBar style={themeMode === "dark" ? "light" : "dark"} /> */}
+            <StatusBar style="dark" />
+            <SafeAreaView style={[styles.container]}>
+                {/* <View style={styles.buttonContainer}>
                     <Pressable
                         onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
                         style={[
@@ -25,6 +27,9 @@ export default function Index() {
                     >
                         <Text style={[styles.menuIcon, { color: theme.foreground }]}>☰</Text>
                     </Pressable>
+                </View> */}
+                <View style={styles.container}>
+                    <CongnisEditor />
                 </View>
             </SafeAreaView>
         </>
