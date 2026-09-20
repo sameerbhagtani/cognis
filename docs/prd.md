@@ -208,6 +208,51 @@ Member payloads stay thin on purpose, carrying ids rather than user records, so 
 
 ---
 
+## Rate Limiting
+
+Active in production only. Held in memory, so the counts are per process: two API instances allow two instances' worth of traffic. That is a deliberate trade for now, and moving to a shared store is the change to make when a second instance exists.
+
+'/api/auth/*' is rate limited by Better Auth itself and is not configured here. Its defaults already match what the rest of this uses, being memory backed and production only, and it caps sign-in, sign-up, password reset requests and verification resends out of the box. The reset and resend caps matter most: both send mail, so without them the endpoint can be pointed at someone else's inbox at our expense.
+
+Everything else is limited per bucket, with the numbers kept together in 'shared/config/rateLimit.ts':
+
+| Bucket                     | Keyed by          | Limit        |
+| -------------------------- | ----------------- | ------------ |
+| Flood guard, ahead of auth | IP                | 600 / min    |
+| General API                | user              | 300 / min    |
+| Note edits                 | user              | 120 / min    |
+| Folder and note writes     | user + workspace  | 60 / min     |
+| Member invite              | recipient address | 10 / hour    |
+| Socket connections         | user              | 5 concurrent |
+| 'workspace:join'           | socket            | 20 / min     |
+
+Two of those are keyed unusually on purpose. Folder and note writes count against the user **and** the workspace together, because moves, deletes and restores serialize on the workspace advisory lock, so flooding them at one workspace stalls it for everyone in it, which a per-user count alone would not prevent. Note edits sit in their own looser bucket because autosave is legitimately chatty and should not be spending the same allowance. Member invites are keyed by the address being written to rather than the account doing the writing, so repeatedly adding and removing someone cannot be used to fill their inbox.
+
+'/api/health' is exempt, being registered ahead of the API router, so monitoring cannot trip the guard.
+
+### Algorithms differ between the two
+
+Ours is a fixed window: the window opens on the first request and expires a fixed duration later. That carries the usual boundary burst, where spending the allowance at the end of one window and again at the start of the next permits up to twice the limit for an instant. Harmless for the volume based buckets; the invite bucket is the one where it is worth remembering, since a burst across the boundary means twenty mails rather than ten.
+
+Better Auth's is not a fixed window. It re-anchors to the most recent allowed request, so the counter only resets after a full window of silence. Measured against a 3 per 10s sign-in limit, attempts at 0s, 4s and 8s leave the one at 12s blocked, which a fixed window would have allowed. That is stricter under sustained traffic and the right behaviour for brute force, since pacing attempts just under the limit no longer farms attempts indefinitely.
+
+### Deployment: the proxy setting is not optional
+
+Both limiters key on the client address, and behind any proxy, load balancer or CDN, the address a Node server sees is the proxy's. Every request then looks like one client.
+
+Unconfigured, our IP guard becomes a single 600 a minute shared by everyone. Better Auth is worse: unable to resolve a trusted address it falls back to one shared bucket per path, making sign-in 3 attempts per 10 seconds for the entire user base, and because its window only resets after a full window of silence, a moderately busy deployment would never be quiet long enough to reset it. Sign-in would simply stop working, and nothing in the symptom points at rate limiting.
+
+The obvious fix is worse than the problem. Trusting the forwarded header unconditionally hands the key to the caller: 'X-Forwarded-For' is client supplied, so an attacker gets a fresh bucket per request and bypasses the limit entirely, or pins the header to someone else's address and gets that person throttled instead.
+
+What is needed is a narrow value, either the number of proxy hops in front of the app or the specific proxy addresses, and it has to be set in both places, since the two resolve the address independently:
+
+- Express, for our limiters: 'app.set("trust proxy", <hops or CIDR>)'
+- Better Auth, for its own: 'advanced.ipAddress.ipAddressHeaders' / 'trustedProxies'
+
+Configure one and not the other and one limiter works while the other does not. Neither is set today, because the correct value depends on a topology that has not been chosen yet, and both wrong answers are worse than leaving it visible here. Better Auth logs a warning the first time it cannot resolve an address, which is the signal to watch for on the first deploy.
+
+---
+
 ## Running the Purge Job
 
 The purge is the one part of the API that nothing starts for you. 'pnpm start' runs the server and only the server, so on a fresh deploy the trash grows forever until something external invokes the job. That is the cost of keeping it out of the API process: a timer inside the server would fire once per instance, and two instances would run concurrent purges over the same rows.

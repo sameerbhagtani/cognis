@@ -1,4 +1,5 @@
 import { Server } from "socket.io";
+import { RateLimiterMemory, RateLimiterRes } from "rate-limiter-flexible";
 import { z } from "zod";
 
 import { workspaceRoom } from "./events.js";
@@ -6,6 +7,7 @@ import { setSocketServer } from "./emitter.js";
 
 import { auth } from "../lib/auth.js";
 import env from "../shared/config/env.js";
+import { RATE_LIMITS, rateLimitEnabled } from "../shared/config/rateLimit.js";
 import { getWorkspaceMembership } from "../shared/services/workspaceAccess.js";
 
 import type { Server as HttpServer } from "node:http";
@@ -13,6 +15,31 @@ import type { Server as HttpServer } from "node:http";
 type RoomAck = (result: { ok: boolean; error?: string }) => void;
 
 const workspaceIdSchema = z.guid();
+
+const joinLimiter = new RateLimiterMemory(RATE_LIMITS.wsJoin);
+
+/**
+ * Sockets held per user, so one account can't open connections without bound. A
+ * gauge rather than a rate, which is why it is a plain count instead of a
+ * limiter.
+ */
+const socketsPerUser = new Map<string, number>();
+
+function claimConnection(userId: string) {
+    const current = socketsPerUser.get(userId) ?? 0;
+    if (rateLimitEnabled && current >= RATE_LIMITS.wsConnections) return false;
+
+    socketsPerUser.set(userId, current + 1);
+
+    return true;
+}
+
+function releaseConnection(userId: string) {
+    const next = (socketsPerUser.get(userId) ?? 1) - 1;
+
+    if (next <= 0) socketsPerUser.delete(userId);
+    else socketsPerUser.set(userId, next);
+}
 
 /**
  * socket.io has no equivalent of Express's error middleware: a rejected handler
@@ -50,17 +77,43 @@ export function createSocketServer(httpServer: HttpServer) {
 
         if (!session) return next(new Error("Unauthorized"));
 
+        // Refused during the handshake rather than after connecting: a socket that
+        // connects and is then dropped looks like a network failure, and the client
+        // reconnects straight into the same wall. A connect_error carries a reason
+        // the client can act on.
+        if (!claimConnection(session.user.id)) {
+            return next(new Error("Too many open connections"));
+        }
+
         socket.data.userId = session.user.id;
         next();
     });
 
     io.on("connection", (socket) => {
+        // Claimed in the handshake above, so every connected socket holds exactly
+        // one slot and releases it here.
+        socket.on("disconnect", () => releaseConnection(socket.data.userId));
+
         // Membership is re-checked here rather than trusted from the client: the
         // room is the only thing gating what this socket receives, viewers
         // included.
         socket.on(
             "workspace:join",
             handleRoomRequest("workspace:join", async (workspaceId) => {
+                // Each join costs a membership lookup, so the spam guard sits ahead
+                // of the query rather than after it.
+                if (rateLimitEnabled) {
+                    try {
+                        await joinLimiter.consume(socket.id);
+                    } catch (err) {
+                        if (err instanceof Error) throw err;
+
+                        const retryAfter = Math.ceil((err as RateLimiterRes).msBeforeNext / 1000);
+
+                        return { ok: false, error: `Too many joins, retry in ${retryAfter}s` };
+                    }
+                }
+
                 const membership = await getWorkspaceMembership(workspaceId, socket.data.userId);
                 if (!membership) return { ok: false, error: "Workspace not found" };
 
