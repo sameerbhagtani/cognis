@@ -3,7 +3,9 @@ import type { Workspace } from "../modules/workspace/service.js";
 import type { Note } from "../modules/note/service.js";
 import type { WorkspaceRole } from "../shared/services/workspaceAccess.js";
 
-export const workspaceRoom = (workspaceId: string) => `workspace:${workspaceId}`;
+export function workspaceRoom(workspaceId: string) {
+    return `workspace:${workspaceId}`;
+}
 
 /**
  * Payloads stay deliberately thin where the client would refetch anyway. A move
