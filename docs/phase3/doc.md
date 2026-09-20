@@ -1,0 +1,182 @@
+# Cognis — Phase 3 (PRD)
+
+**The mobile frontend.** This is a plan, not a record of what's built — unlike `phase1/doc.md` and `phase2/doc.md`, which describe the backend as it exists. Everything here lives in `apps/mobile` unless noted, and talks to the backend exactly as documented in the root README and phase 1/2 docs. No backend changes are expected to be needed for this phase.
+
+---
+
+## Where we're starting from
+
+The `mobile` branch was merged in with some early screens already built. Audited against this PRD, here's what survives and what doesn't:
+
+**Keep, as foundation:**
+
+- Theme system (`lib/theme/*`, `@cognis/constants` themes) — sound, extend rather than replace.
+- `lib/auth.ts` — the Better Auth client with the `expoClient` plugin and `SecureStore`, is the correct integration pattern.
+- Root `_layout.tsx`'s `Stack.Protected` session guard.
+- The React Hook Form + Zod pattern used in the auth screens.
+
+**Rewrite:**
+
+- Signin/Signup screens — logic is fine, but hardcoded `#EF4444` needs to become a theme token, and the flow is incomplete (see Auth screens below).
+- `FileTree.tsx` — currently renders hardcoded dummy data. Needs real API wiring, a context menu, and a move-to-folder picker.
+- `AiChat.tsx` (sidebar chat list) — currently a single `<Text>`. Needs the real chat list.
+- `DrawerTabs.tsx` / `DrawerPager.tsx` — the swipeable-tabs approach doesn't match the mode-switch design below; replaced by a simpler mode-driven middle section.
+
+**Replaced entirely:**
+
+- `CognisEditor.tsx` and the `@10play/tentap-editor` dependency it's built on. See Editor below — this becomes a custom-built markdown editor, not a WYSIWYG rich-text one. TenTap has no markdown export path at all (confirmed against the installed package and its README), so it can't give us what we actually want here.
+
+**New, doesn't exist yet:**
+
+- An `axios` instance for the actual Cognis REST API (today only Better Auth's own client talks to the network).
+- A socket.io client and the hooks/rooms around it.
+- Workspace switcher, workspace creation, member invite.
+- The chat screen itself (message list + streaming).
+- Settings screen.
+- The markdown editor itself: a small bundled CodeMirror 6 web app hosted in `react-native-webview`, the RN↔WebView bridge for it, and the native toolbar/keyboard plumbing around it. See Editor below — this is the one genuinely novel build in this phase, everything else here is wiring an existing pattern to our API.
+
+---
+
+## Scope
+
+**In:** Auth (full Better Auth flow), Editor, Chat, Settings, the sidebar, workspace switching, workspace creation, inviting a member by email.
+
+**Out, deliberately deferred:**
+
+- Trash browsing/restore UI (soft-deletes still happen; there's just no screen to browse or restore them yet).
+- Editing or removing a member's role (invite-by-email only).
+- True drag-and-drop reordering of the file tree (see Sidebar → Notes mode).
+- Offline support, local caching, push notifications.
+- Any change to `apps/landing`.
+
+---
+
+## Screens
+
+### Auth
+
+The backend requires email verification before sign-in and supports Better Auth's standard password reset. Full flow:
+
+| Screen          | Notes                                                                                                                                                                                                                         |
+| --------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Sign in         | Existing, needs the color-token fix.                                                                                                                                                                                          |
+| Sign up         | Existing, needs the color-token fix.                                                                                                                                                                                          |
+| Verify email    | New. Shown right after sign-up (and if a sign-in attempt fails because the account is unverified). Explains that an email was sent, with a resend action. No polling — the app just retries sign-in when the user comes back. |
+| Forgot password | New. Email input, calls Better Auth's request-reset.                                                                                                                                                                          |
+| Reset password  | New. Opens from the emailed link via the `cognis://` deep link (this is what `@better-auth/expo`'s `expoClient` scheme config exists for) and lets the user set a new password.                                               |
+
+### Editor
+
+An Obsidian-style live-preview markdown editor, purpose-built rather than adopted from a library — no existing RN package combines rich-enough editing with real markdown storage (see the library survey below). `note.content` stores clean markdown text throughout; there is no HTML involved anywhere in this design.
+
+**Architecture.** A small bundled web app — CodeMirror 6 + `@codemirror/lang-markdown` plus a live-preview decoration extension (vendored/adapted from an existing open-source CM6 package such as `codemirror-live-markdown` rather than hand-written, since "hide markdown syntax except on the active line" is a fiddly algorithm that's already been solved) — hosted inside `react-native-webview`. This is the same integration shape TenTap itself used (bundle a web editor, talk to it over a postMessage bridge), just pointed at CodeMirror instead of TipTap, and it's also literally how Obsidian's own mobile apps work: Live Preview is CodeMirror 6 in a WebView there too, chosen specifically because it's one of the only editors that performs well on mobile.
+
+**Two modes, mapped onto Obsidian's own two view modes:**
+
+- **Edit (Live Preview).** The line the cursor is on shows raw markdown syntax; every other line renders styled (headings look like headings, `**bold**` looks bold, etc.). A horizontally-scrollable toolbar is pinned above the keyboard while focused, via `react-native-keyboard-controller` (`InputAccessoryView` alone is iOS-only with no real Android equivalent, so this library's `KeyboardToolbar`/`KeyboardStickyView` covers both platforms). Default toolbar buttons: **Bold, Italic, Strikethrough, inline Code, Heading (cycles H1→H2→H3), Bulleted list, Numbered list, Checklist, Blockquote, Link.**
+- **Read (Reading view).** Fully rendered, no raw markdown ever visible, no cursor, no keyboard, no toolbar. Tapping the note body does nothing (no focus, no keyboard).
+
+**The toggle.** Top-right of the Editor screen, switches Edit ↔ Read. Visible only when the caller's workspace role is `owner` or `editor`. For a `viewer`, the screen is permanently in Read mode and the toggle doesn't render at all — there's nothing for them to edit, so no affordance to imply otherwise.
+
+- Title is a separate field above the body (`note.title`, capped at 50 chars per the schema).
+- Autosave: debounce PATCH `/notes/:id` a couple of seconds after typing stops, same spirit as the backend's own embedding debounce.
+- Listens for `note:updated` on the currently open note; if it fires for a note the user has open, show a small non-blocking banner ("this note changed elsewhere") rather than clobbering their in-progress edit. Matches the backend's documented last-write-wins model — we're not building conflict resolution, just not being silent about it.
+
+**Why not an existing library** (checked against each project's own repo/README, not memory):
+
+| Option                                              | Verdict                                                                                                                                                                                                                                                                                                                                                                                                           |
+| --------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `@10play/tentap-editor` (what was there before)     | No markdown path at all — confirmed via the installed package's bridge code (only `getHTML`/`getJSON`/`getText`) and its README (zero mentions of markdown, not even planned).                                                                                                                                                                                                                                    |
+| `@expensify/react-native-live-markdown`             | Real markdown storage, production-proven at Expensify, but it's a flat `TextInput` replacement — no per-line raw/rendered switching, and its default parser only supports `h1` (no h2–h6) with unclear list support. Doesn't get us the Obsidian behavior without writing a custom parser anyway, at which point we're doing comparable work to the CodeMirror route without CodeMirror's mobile-proven pedigree. |
+| `react-native-enriched-markdown` (Software Mansion) | The right shape (native rendering, real markdown, good pedigree — same team as `reanimated`/`gesture-handler` already here) but at `v0.1.0`, too early to build the core editor on. Worth revisiting in a future phase.                                                                                                                                                                                           |
+
+**Risk note:** this is the one part of phase 3 that's a genuine build, not a wire-up — worth prototyping in isolation before the rest of the phase's screens are built around it.
+
+### Chat
+
+- Message list styled like ChatGPT/Claude's mobile apps: user bubbles right-aligned, assistant left-aligned, streaming text as `chat:token` events arrive.
+- Citations render as tappable chips under an assistant message (from `citedNoteIds` → note titles), opening the cited note in the Editor.
+- Shows a subtle indicator when `truncated: true` comes back on `chat:message_completed` (hit the token cap, not a natural stop).
+- "+ New chat" creates via `POST /workspaces/:id/chats` and opens it with an empty message list.
+- Joins `chat:{chatId}` on mount, leaves on unmount, per the realtime spec.
+
+### Settings
+
+Kept minimal per the brief:
+
+- Theme switcher (light/dark/system) — `ThemeContext` already supports all three.
+- Account email (read-only).
+- AI usage: chat and indexing spend vs. limit from `GET /me/ai-usage`, shown as simple bars. Cheap to add, and the backend already computes it.
+- Sign out.
+
+Workspace creation and member invite are **not** in Settings (keeps it minimal, as asked) — they live in the workspace switcher instead, below.
+
+---
+
+## Sidebar
+
+The one component with real interaction design to nail down. State: a persisted `mode` of `"notes" | "ai"`, which survives across sidebar opens.
+
+**Top: two buttons, "Notes" and "AI"** (icons from `@expo/vector-icons`, no new dependency needed).
+
+- Tapping a button sets `mode`, closes the sidebar, and navigates:
+    - **Notes** → the most recently updated note in the active workspace (or an empty/create-first-note state if there are none).
+    - **AI** → the most recently active chat (or the chat list/new-chat state if there are none).
+- If the tapped button matches the mode you're already in, it just closes the sidebar — it doesn't re-navigate and blow away whatever you're looking at.
+- Net effect: these are quick-switch shortcuts, not a live toggle you sit and flip while the sidebar stays open — confirmed this reading with you over the toggle-behavior question.
+
+**Middle: reflects the current `mode` (this is what makes reopening the sidebar useful):**
+
+- _Notes mode_ — the workspace's file tree (folders collapsible, notes as leaves).
+    - Tap a note → closes sidebar, opens it in the Editor.
+    - Tap a folder → expands/collapses in place, no navigation.
+    - Long-press a note or folder → action sheet: **Rename**, **Delete** (soft-delete via the existing endpoint), **Move to...** (opens a folder picker, then `PATCH` with the new `parentFolderId` — this is the "move-to-folder picker, not drag-and-drop" decision). Folders additionally get **New note here** / **New folder here**.
+    - A persistent affordance at the top of the tree for creating a note/folder at the workspace root.
+- _AI mode_ — flat list of the user's chats in this workspace, newest first (`GET /workspaces/:id/chats` is already sorted this way).
+    - Tap a chat → closes sidebar, opens it in the Chat screen.
+    - Long-press or swipe → Delete (`DELETE /chats/:id`).
+    - "+ New chat" at the top.
+
+**Bottom bar:**
+
+- Workspace name, tap → an upward action-sheet-style popup listing the user's workspaces (`GET /workspaces`). Picking one switches the active workspace: refetches the tree/chat list, leaves the old workspace's socket room, joins the new one. The same popup has **"+ Create workspace"** at the bottom (`POST /workspaces`).
+- A small gear icon next to it, tapping navigates straight to Settings and closes the sidebar — it doesn't open the workspace popup.
+
+Where invite lives: from the workspace popup, an owner sees a small "Invite" action next to their owned workspace(s) (owner-only per the backend's role check) opening a one-field email + role picker screen (`POST /workspaces/:id/members`).
+
+---
+
+## Cross-cutting technical notes
+
+Two different pieces of mobile code need the user's Better Auth session outside of `authClient` itself, and both hit the same underlying gap:
+
+1. **The axios instance.** Per this repo's convention we use `axios` for REST calls, not `fetch` — but today only `authClient`'s own fetch (used solely for `/api/auth/*`) carries the session. The rest of the API (workspaces, folders, notes, chats) needs the same session attached to every axios request.
+2. **The socket.io handshake.** The backend reads the session from `socket.handshake.headers.cookie`. A plain `socket.io-client` connection doesn't automatically carry what `@better-auth/expo` stores in `SecureStore`.
+
+Both are solved the same way: `@better-auth/expo`'s client exposes a way to read the current session cookie for handing to something other than its own fetcher (used for things like WebViews) — need to confirm the exact method name against the installed package (not from memory, per this repo's own rule about bleeding-edge libraries) before wiring up axios interceptors and the socket's `extraHeaders`/`auth` option.
+
+For the socket client itself: plain `socket.io-client`, with `transports: ["websocket"]` set explicitly to skip the polling handshake, which is unreliable over React Native's XHR shim.
+
+---
+
+## Visual conventions
+
+- Icons: `@expo/vector-icons` (ships with Expo, no new dependency) — pick one family (likely Feather or Ionicons) and stick to it for a consistent minimal look.
+- No more hardcoded hex colors in components. Add a `danger`/`error` token to the `Theme` type and both palettes in `@cognis/constants`, replacing the inline `#EF4444` currently in the auth screens.
+
+## Dependency changes
+
+- **Drop** `@10play/tentap-editor` — no longer used.
+- **Add** `react-native-keyboard-controller` — cross-platform keyboard tracking and the above-keyboard toolbar for the editor.
+- **Add** whatever CodeMirror 6 packages the custom editor bundle needs (`@codemirror/lang-markdown`, `@codemirror/state`, `@codemirror/view`, plus the vendored live-preview extension) — these live inside the bundled web app, not the RN bundle itself, the same way TenTap's own web bundle worked.
+- `react-native-webview` is already a dependency and is reused rather than added.
+
+---
+
+## Open items to resolve during implementation
+
+- Confirm the `@better-auth/expo` API for sharing the session with axios/socket (see above).
+- Confirm verification/reset emails actually deep-link back into the app via `cognis://` on a real device/simulator — the plugin is built for this, but untested here.
+- Read the exact Expo 57 docs before touching anything native-module-adjacent (drawer, gesture handler, pager, keyboard controller, webview), per `apps/mobile/AGENTS.md` — the version has moved past what's in general training data.
+- Pick and vet the specific open-source CM6 live-preview extension to vendor (license, maintenance state, how cleanly it separates from its host project) before building on top of it.
+- Prototype the editor (WebView bridge + live preview + toolbar + read-only toggle) as its own spike before building the rest of phase 3's screens around it — it's the one piece here without a well-trodden path in this codebase already.
