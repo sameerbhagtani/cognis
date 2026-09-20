@@ -8,8 +8,11 @@ import { usePathname, useRouter } from "expo-router";
 // actually hands to drawerContent.
 import type { DrawerContentComponentProps } from "expo-router/drawer";
 
+import { useChats } from "@/lib/chat";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
+import { createChat } from "@/modules/chat/api";
+import { ChatList } from "./ChatList";
 import { FileTree, type FileTreeHandle } from "./FileTree";
 import { ModeSwitch, type DrawerMode } from "./ModeSwitch";
 import { WorkspaceBar } from "./WorkspaceBar";
@@ -31,6 +34,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
     const router = useRouter();
     const pathname = usePathname();
     const { activeWorkspace, isLoading, error, refresh, selectWorkspace } = useWorkspace();
+    const { refresh: refreshChats } = useChats();
 
     const styles = createStyles(theme, insets);
     const mode = modeFromPathname(pathname);
@@ -62,6 +66,16 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         router.push(path);
     }
 
+    async function startChat() {
+        if (!activeWorkspace) return;
+
+        const chat = await createChat(activeWorkspace.id);
+
+        await refreshChats();
+        closeDrawer();
+        router.push({ pathname: "/chat/[chatId]", params: { chatId: chat.id } });
+    }
+
     return (
         <View style={styles.container}>
             <ModeSwitch mode={mode} onSelect={onSelectMode} />
@@ -85,9 +99,12 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                         }}
                     />
                 ) : (
-                    <View style={styles.centered}>
-                        <Text style={styles.placeholder}>Your chats will show up here.</Text>
-                    </View>
+                    <ChatList
+                        onOpenChat={(chatId) => {
+                            closeDrawer();
+                            router.push({ pathname: "/chat/[chatId]", params: { chatId } });
+                        }}
+                    />
                 )}
             </View>
 
@@ -118,6 +135,27 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                     >
                         <MaterialCommunityIcons
                             name="folder-plus-outline"
+                            size={20}
+                            color={theme.foreground}
+                        />
+                    </Pressable>
+                </View>
+            )}
+
+            {/* Viewers get this too: chatting is reading, and the API allows it
+             *  for any member. */}
+            {mode === "ai" && (
+                <View style={styles.createRow}>
+                    <Pressable
+                        onPress={() => void startChat()}
+                        hitSlop={8}
+                        style={({ pressed }) => [
+                            styles.createButton,
+                            { opacity: pressed ? 0.6 : 1 },
+                        ]}
+                    >
+                        <MaterialCommunityIcons
+                            name="message-plus-outline"
                             size={20}
                             color={theme.foreground}
                         />

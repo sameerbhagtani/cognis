@@ -315,8 +315,13 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
                 />
             </SafeAreaView>
 
+            {/* `offset` is a translateY, not padding: a positive `closed` value
+             *  pushes the bar *down* off the screen. So the toolbar carries the
+             *  safe-area inset as its own padding, and `opened` cancels that
+             *  padding once the keyboard is covering that strip - which is what
+             *  keeps it flush against the keyboard with no gap. */}
             {!readOnly && canWrite && (
-                <KeyboardStickyView offset={{ closed: insets.bottom, opened: 0 }}>
+                <KeyboardStickyView offset={{ closed: 0, opened: insets.bottom }}>
                     <EditorToolbar
                         onCommand={(command: EditorCommand) => editorRef.current?.exec(command)}
                     />

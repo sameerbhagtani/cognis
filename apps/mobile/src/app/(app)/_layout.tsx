@@ -1,6 +1,7 @@
 import { ActivityIndicator, StyleSheet, View } from "react-native";
 import { Drawer } from "expo-router/drawer";
 
+import { ChatsProvider } from "@/lib/chat";
 import { NotesProvider } from "@/lib/notes";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace, WorkspaceProvider } from "@/lib/workspace";
@@ -11,7 +12,9 @@ export default function AppLayout() {
     return (
         <WorkspaceProvider>
             <NotesProvider>
-                <AppShell />
+                <ChatsProvider>
+                    <AppShell />
+                </ChatsProvider>
             </NotesProvider>
         </WorkspaceProvider>
     );
@@ -50,7 +53,8 @@ function AppShell() {
         >
             <Drawer.Screen name="index" options={{ title: "Notes" }} />
             <Drawer.Screen name="note/[noteId]" options={{ title: "Note" }} />
-            <Drawer.Screen name="chat" options={{ title: "AI" }} />
+            <Drawer.Screen name="chat/index" options={{ title: "AI" }} />
+            <Drawer.Screen name="chat/[chatId]" options={{ title: "Chat" }} />
             <Drawer.Screen name="settings" options={{ title: "Settings" }} />
             <Drawer.Screen name="create-workspace" options={{ title: "New workspace" }} />
             <Drawer.Screen name="invite-member" options={{ title: "Invite" }} />

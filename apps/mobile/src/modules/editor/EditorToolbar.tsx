@@ -1,5 +1,6 @@
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 import { Pressable, ScrollView, StyleSheet } from "react-native";
+import { useSafeAreaInsets, type EdgeInsets } from "react-native-safe-area-context";
 
 import useTheme from "@/lib/theme/useTheme";
 
@@ -30,7 +31,8 @@ type EditorToolbarProps = {
 
 export function EditorToolbar({ onCommand }: EditorToolbarProps) {
     const { theme } = useTheme();
-    const styles = createStyles(theme);
+    const insets = useSafeAreaInsets();
+    const styles = createStyles(theme, insets);
 
     return (
         <ScrollView
@@ -54,12 +56,16 @@ export function EditorToolbar({ onCommand }: EditorToolbarProps) {
     );
 }
 
-function createStyles(theme: Theme) {
+function createStyles(theme: Theme, insets: EdgeInsets) {
     return StyleSheet.create({
         container: {
             borderTopWidth: 1,
             borderTopColor: theme.subtleBorder,
             backgroundColor: theme.background,
+            // Clears the home indicator while the keyboard is down. The screen
+            // cancels exactly this much via KeyboardStickyView's `opened`
+            // offset once the keyboard covers that strip anyway.
+            paddingBottom: insets.bottom,
         },
         content: {
             paddingHorizontal: 12,
