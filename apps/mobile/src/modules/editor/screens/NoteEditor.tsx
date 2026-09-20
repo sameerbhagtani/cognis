@@ -59,6 +59,17 @@ export default function NoteEditor({ noteId }: { noteId: string }) {
     const [saveState, setSaveState] = useState<SaveState>("idle");
     const [readOnly, setReadOnly] = useState(!canWrite);
     const [changedElsewhere, setChangedElsewhere] = useState(false);
+
+    // readOnly is seeded from canWrite and then owned by the toggle, so a
+    // demotion arriving over the socket mid-edit would otherwise leave the
+    // editor writable against a role that can no longer save. Adjusted during
+    // render rather than in an effect, so the editor never paints a frame
+    // offering edits the server would now reject.
+    const [prevCanWrite, setPrevCanWrite] = useState(canWrite);
+    if (canWrite !== prevCanWrite) {
+        setPrevCanWrite(canWrite);
+        if (!canWrite) setReadOnly(true);
+    }
     // Bumped to remount the editor, which is how a reload replaces its content -
     // initialContent is deliberately read once.
     const [reloadKey, setReloadKey] = useState(0);

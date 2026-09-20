@@ -15,6 +15,7 @@ import { useRouter } from "expo-router";
 import { ApiClientError } from "@/lib/api";
 import { authClient } from "@/lib/auth";
 import { CONTENT_MAX_WIDTH } from "@/lib/hooks/useLayout";
+import { getSocket } from "@/lib/socket";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
 import { ActionSheet, PromptDialog, ScreenHeader, type SheetAction } from "@/modules/drawer";
@@ -82,6 +83,36 @@ export default function WorkspaceSettings({ workspaceId }: { workspaceId: string
             cancelled = true;
         };
     }, [workspaceId]);
+
+    // Only the active workspace's room is joined, so an event can only be about
+    // that workspace - and this screen is addressable for any of them. Without
+    // the guard, a change in the workspace you're working in would refetch the
+    // members of an unrelated one you happen to be looking at.
+    const isActive = workspaceId === activeWorkspace?.id;
+
+    useEffect(() => {
+        if (!isActive) return;
+
+        let cancelled = false;
+
+        const onMembersChanged = () => void loadMembers();
+
+        void getSocket().then((socket) => {
+            if (cancelled) return;
+
+            socket.on("member:role_changed", onMembersChanged);
+            socket.on("member:removed", onMembersChanged);
+        });
+
+        return () => {
+            cancelled = true;
+
+            void getSocket().then((socket) => {
+                socket.off("member:role_changed", onMembersChanged);
+                socket.off("member:removed", onMembersChanged);
+            });
+        };
+    }, [isActive, loadMembers]);
 
     async function runMemberAction(action: () => Promise<void>) {
         setActionError(null);

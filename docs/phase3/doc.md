@@ -71,7 +71,21 @@ Member actions live in the existing `ActionSheet` rather than inline pickers or 
 
 **Decided against, for now:** a pending-invite flow. `addMember` looks the invitee up by email and 404s if they have no Cognis account, so invites only work for existing users; the invite dialog says so up front. And there is no "leave workspace" — `DELETE .../members/:memberId` is owner-only, so a non-owner can't remove themselves. Both are backend gaps, not screens, and neither is worth the work yet.
 
-Left for a follow-up: the client still ignores `member:role_changed`, `member:removed` and `workspace:deleted`, all of which the backend already emits. Until those are wired, a demoted user keeps seeing edit controls until they restart the app.
+### Live reconciliation
+
+Built straight after, as its own pass. The backend already emitted `workspace:updated`, `workspace:deleted`, `member:role_changed` and `member:removed`; the client listened to none of them, so a demoted user kept edit controls until they restarted the app.
+
+All four now land in `WorkspaceProvider`, and nearly all of them resolve the same way: call `refresh`. `GET /workspaces` returns each workspace with the caller's **current** role and omits any they can no longer see, so one refetch settles a rename, a demotion, a removal and a deletion alike. No payload merging, nothing to get subtly wrong.
+
+Three details that aren't obvious from the event names:
+
+- **`member:removed` and `member:role_changed` carry a `userId` but no `workspaceId`.** They're actionable only because a client joins exactly one workspace room — the active one (`NotesProvider`). An arriving event therefore can't be about anything else. If the client ever joins several rooms, this breaks, and these handlers are where it breaks.
+- **Events come back to whoever caused them.** `emitToWorkspace` includes the actor, so an owner deleting a workspace would be told their own workspace "was deleted by its owner". Suppressed by checking `ownerId === userId`: only an owner can delete, and there is exactly one, so an owned workspace vanishing is always your own doing. The removal and role-change handlers need no such guard — both are filtered to `userId === me`, and the API forbids an owner acting on their own row.
+- **The editor's read-only toggle had to be re-seeded.** `readOnly` starts from `canWrite` and is then owned by the toggle, so a demotion mid-edit left the editor writable against a role that can no longer save. Corrected during render rather than in an effect, so no frame ever paints edit controls the server would reject.
+
+Losing access is the only change announced with a dialog, because it moves you somewhere you didn't ask to go. A demotion isn't: the controls disappearing says it more plainly than a dialog would.
+
+The workspace screen subscribes separately to keep its member list live, guarded on the workspace being the active one — otherwise a change where you're working would refetch the members of an unrelated workspace you happen to be looking at.
 
 The routes this phase wires up:
 
