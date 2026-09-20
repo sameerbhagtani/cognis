@@ -11,7 +11,7 @@ type WorkspaceBarProps = {
     isPopupOpen: boolean;
     onTogglePopup: () => void;
     onCreateWorkspace: () => void;
-    onInviteMember: () => void;
+    onOpenWorkspace: (workspaceId: string) => void;
     onOpenSettings: () => void;
     onSwitchWorkspace: (workspaceId: string) => void;
 };
@@ -21,12 +21,16 @@ type WorkspaceBarProps = {
  * into settings. The switcher opens upward as a panel inside the drawer rather
  * than a Modal - it belongs to the drawer's own surface, and a Modal would sit
  * above it.
+ *
+ * The popup does one job: pick a workspace. Everything you can *do* to a
+ * workspace lives behind the per-row button instead, which is what keeps this
+ * from turning into a menu that happens to also switch.
  */
 export function WorkspaceBar({
     isPopupOpen,
     onTogglePopup,
     onCreateWorkspace,
-    onInviteMember,
+    onOpenWorkspace,
     onOpenSettings,
     onSwitchWorkspace,
 }: WorkspaceBarProps) {
@@ -35,7 +39,6 @@ export function WorkspaceBar({
     const { workspaces, activeWorkspace } = useWorkspace();
 
     const styles = createStyles(theme, insets);
-    const isOwner = activeWorkspace?.role === "owner";
 
     return (
         <View>
@@ -46,47 +49,50 @@ export function WorkspaceBar({
                             const active = workspace.id === activeWorkspace?.id;
 
                             return (
-                                <Pressable
-                                    key={workspace.id}
-                                    onPress={() => onSwitchWorkspace(workspace.id)}
-                                    style={({ pressed }) => [
-                                        styles.popupRow,
-                                        { opacity: pressed ? 0.7 : 1 },
-                                    ]}
-                                >
-                                    <Text style={styles.popupRowText} numberOfLines={1}>
-                                        {workspace.name}
-                                    </Text>
-                                    {active && (
+                                <View key={workspace.id} style={styles.popupRow}>
+                                    <Pressable
+                                        onPress={() => onSwitchWorkspace(workspace.id)}
+                                        style={({ pressed }) => [
+                                            styles.popupSwitch,
+                                            { opacity: pressed ? 0.7 : 1 },
+                                        ]}
+                                    >
+                                        <Text style={styles.popupRowText} numberOfLines={1}>
+                                            {workspace.name}
+                                        </Text>
+                                        {active && (
+                                            <MaterialCommunityIcons
+                                                name="check"
+                                                size={16}
+                                                color={theme.primary}
+                                            />
+                                        )}
+                                    </Pressable>
+
+                                    {/* Members and settings for that workspace,
+                                     *  without switching to it. Shown to every
+                                     *  role: the member list is readable by
+                                     *  anyone in the workspace. */}
+                                    <Pressable
+                                        onPress={() => onOpenWorkspace(workspace.id)}
+                                        hitSlop={8}
+                                        style={({ pressed }) => [
+                                            styles.popupRowAction,
+                                            { opacity: pressed ? 0.6 : 1 },
+                                        ]}
+                                    >
                                         <MaterialCommunityIcons
-                                            name="check"
+                                            name="tune-variant"
                                             size={16}
-                                            color={theme.primary}
+                                            color={theme.foreground}
                                         />
-                                    )}
-                                </Pressable>
+                                    </Pressable>
+                                </View>
                             );
                         })}
                     </ScrollView>
 
                     <View style={styles.popupDivider} />
-
-                    {isOwner && (
-                        <Pressable
-                            onPress={onInviteMember}
-                            style={({ pressed }) => [
-                                styles.popupRow,
-                                { opacity: pressed ? 0.7 : 1 },
-                            ]}
-                        >
-                            <MaterialCommunityIcons
-                                name="account-plus-outline"
-                                size={16}
-                                color={theme.foreground}
-                            />
-                            <Text style={styles.popupActionText}>Invite someone</Text>
-                        </Pressable>
-                    )}
 
                     <Pressable
                         onPress={onCreateWorkspace}
@@ -181,6 +187,17 @@ function createStyles(theme: Theme, insets: EdgeInsets) {
             gap: 8,
             paddingVertical: 12,
             paddingHorizontal: 12,
+        },
+        // The switch target fills the row so the whole width stays tappable,
+        // with only the trailing button carved out of it.
+        popupSwitch: {
+            flex: 1,
+            flexDirection: "row",
+            alignItems: "center",
+            gap: 8,
+        },
+        popupRowAction: {
+            paddingLeft: 4,
         },
         popupRowText: {
             flex: 1,

@@ -1,6 +1,6 @@
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { View, Text, TextInput, Pressable, ScrollView, ActivityIndicator } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 
 import { useForm, Controller } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -32,6 +32,7 @@ export default function CreateWorkspace({ onboarding = false }: CreateWorkspaceP
     const {
         control,
         handleSubmit,
+        reset,
         formState: { errors, isValid, isSubmitting },
     } = useForm<CreateWorkspaceFormData>({
         resolver: zodResolver(createWorkspaceSchema),
@@ -39,6 +40,23 @@ export default function CreateWorkspace({ onboarding = false }: CreateWorkspaceP
         reValidateMode: "onChange",
         defaultValues: { name: "" },
     });
+
+    // The drawer keeps this screen mounted once visited, so without this every
+    // piece of state from the last visit is still here when it reopens - a
+    // failed attempt's error, and whatever was typed into the field. Opening
+    // "Create workspace" should look the same every time, so the whole screen
+    // resets on focus rather than just the parts that are obviously wrong.
+    //
+    // `reset` clears the field and its validation state together, which is what
+    // keeps the submit button disabled again rather than enabled over a value
+    // the field is no longer showing.
+    useFocusEffect(
+        useCallback(() => {
+            setApiError(null);
+            setFocused(false);
+            reset();
+        }, [reset]),
+    );
 
     async function onSubmit(data: CreateWorkspaceFormData) {
         setApiError(null);

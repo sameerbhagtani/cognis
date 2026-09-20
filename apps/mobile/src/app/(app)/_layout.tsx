@@ -56,8 +56,8 @@ function AppShell() {
             <Drawer.Screen name="chat/index" options={{ title: "AI" }} />
             <Drawer.Screen name="chat/[chatId]" options={{ title: "Chat" }} />
             <Drawer.Screen name="settings" options={{ title: "Settings" }} />
+            <Drawer.Screen name="workspace/[workspaceId]" options={{ title: "Workspace" }} />
             <Drawer.Screen name="create-workspace" options={{ title: "New workspace" }} />
-            <Drawer.Screen name="invite-member" options={{ title: "Invite" }} />
         </Drawer>
     );
 }

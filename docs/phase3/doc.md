@@ -43,29 +43,47 @@ The `mobile` branch was merged in with some early screens already built. Audited
 
 **Out, deliberately deferred:**
 
-- **Workspace administration**, as its own later phase — see below.
+- **Workspace administration** — deferred out of the first pass, then built as its own later phase. See below.
 - Trash browsing/restore UI (soft-deletes still happen; there's just no screen to browse or restore them yet).
-- True drag-and-drop reordering of the file tree (see Sidebar → Notes mode).
 - Offline support, local caching, push notifications.
 - Any change to `apps/landing`.
 
-### Workspace administration, deferred
+### Workspace administration — built, as its own later phase
 
-Five backend routes stay unused for now. Creating a workspace and inviting someone is enough to get a person working; managing what already exists is comparatively low-traffic, and notes and chat are the actual product.
+Deferred out of the first pass and picked up after responsiveness. The five routes below are now all in use.
 
-| Route                                      | What it does                     |
-| ------------------------------------------ | -------------------------------- |
-| `GET /workspaces/:id/members`              | List who's in the workspace      |
-| `PATCH /workspaces/:id/members/:memberId`  | Change someone's role            |
-| `DELETE /workspaces/:id/members/:memberId` | Remove someone                   |
-| `PATCH /workspaces/:id`                    | Rename the workspace             |
-| `DELETE /workspaces/:id`                   | Delete it, and everything inside |
+**The UI question was where to put it.** Everything used to hang off the workspace popup in the sidebar's footer — create was a row in it, invite a small action beside owned workspaces. That popup is a _switcher_; adding rename, delete, a member list, role changes and removals would have made it a menu that happens to also switch.
 
-These belong together on one owner-gated **Workspace settings** screen, reached from the workspace switcher — not on the Settings screen, which is scoped to app preferences (theme, account, usage, sign out) rather than workspace administration.
+So: the popup keeps one job, picking a workspace, and each row gets a trailing button opening **that workspace's own screen** — by id, not by switching to it first. Settings stays scoped to app preferences (theme, account, usage, sign out); the workspace screen holds everything about one workspace.
 
-The missing member list is the sharpest edge of deferring this: you can invite someone and then have no way to see who has access. Worth weighing if this slips far.
+| Section     | Owner                                        | Editor / Viewer  |
+| ----------- | -------------------------------------------- | ---------------- |
+| Name        | tap to rename                                | read-only        |
+| Members     | full list, rows open a menu                  | full list, inert |
+| Invite      | button on the members header, opens a dialog | hidden           |
+| Danger zone | Delete workspace, plain confirm              | hidden           |
 
-`GET /workspaces/:id` stays unused regardless — the list endpoint already returns each workspace with the caller's role, so there's nothing left to fetch.
+Member actions live in the existing `ActionSheet` rather than inline pickers or swipe gestures: _Make editor / Make viewer_, _Remove from workspace_. The owner's own row gets no menu at all, because the API refuses to change or remove it — a menu whose every option 400s is worse than no menu.
+
+`GET /workspaces/:id/members` is readable by **any** member, not just the owner, so the list renders for everyone. That closes the "invite someone and then never see who has access" gap for non-owners too.
+
+**Invite is a dialog, not a route.** It began as a screen and had to move: the drawer navigator keeps a screen mounted once visited, so reopening invite showed the _previous_ invite's success message — for a person who had since been removed. A conditionally-mounted dialog can't hold state across opens, which removes the whole class of bug rather than patching this instance of it. Create-workspace stays a screen because onboarding renders it standalone with no drawer behind it; invite has no such need. It does still clear its error banner on focus, for the same reason.
+
+**Decided against, for now:** a pending-invite flow. `addMember` looks the invitee up by email and 404s if they have no Cognis account, so invites only work for existing users; the invite dialog says so up front. And there is no "leave workspace" — `DELETE .../members/:memberId` is owner-only, so a non-owner can't remove themselves. Both are backend gaps, not screens, and neither is worth the work yet.
+
+Left for a follow-up: the client still ignores `member:role_changed`, `member:removed` and `workspace:deleted`, all of which the backend already emits. Until those are wired, a demoted user keeps seeing edit controls until they restart the app.
+
+The routes this phase wires up:
+
+| Route                                      | What it does                     | Who        |
+| ------------------------------------------ | -------------------------------- | ---------- |
+| `GET /workspaces/:id/members`              | List who's in the workspace      | Any member |
+| `PATCH /workspaces/:id/members/:memberId`  | Change someone's role            | Owner      |
+| `DELETE /workspaces/:id/members/:memberId` | Remove someone                   | Owner      |
+| `PATCH /workspaces/:id`                    | Rename the workspace             | Owner      |
+| `DELETE /workspaces/:id`                   | Delete it, and everything inside | Owner      |
+
+`GET /workspaces/:id` stays unused regardless — the list endpoint already returns each workspace with the caller's role, so the screen reads its own role and name straight from the list it already has, with no fetch of its own.
 
 ---
 
@@ -155,7 +173,7 @@ The one component with real interaction design to nail down. State: a persisted 
 - _Notes mode_ — the workspace's file tree (folders collapsible, notes as leaves).
     - Tap a note → closes sidebar, opens it in the Editor.
     - Tap a folder → expands/collapses in place, no navigation.
-    - Long-press a note or folder → action sheet: **Rename**, **Delete** (soft-delete via the existing endpoint), **Move to...** (opens a folder picker, then `PATCH` with the new `parentFolderId` — this is the "move-to-folder picker, not drag-and-drop" decision). Folders additionally get **New note here** / **New folder here**.
+    - Long-press a note or folder → action sheet: **Rename**, **Delete** (soft-delete via the existing endpoint), **Move to...** (opens a folder picker, then `PATCH` with the new `parentFolderId`). Folders additionally get **New note here** / **New folder here**.
     - A persistent affordance at the top of the tree for creating a note/folder at the workspace root.
 - _AI mode_ — flat list of the user's chats in this workspace, newest first (`GET /workspaces/:id/chats` is already sorted this way).
     - Tap a chat → closes sidebar, opens it in the Chat screen.
@@ -167,7 +185,7 @@ The one component with real interaction design to nail down. State: a persisted 
 - Workspace name, tap → an upward action-sheet-style popup listing the user's workspaces (`GET /workspaces`). Picking one switches the active workspace: refetches the tree/chat list, leaves the old workspace's socket room, joins the new one. The same popup has **"+ Create workspace"** at the bottom (`POST /workspaces`).
 - A small gear icon next to it, tapping navigates straight to Settings and closes the sidebar — it doesn't open the workspace popup.
 
-Where invite lives: from the workspace popup, an owner sees a small "Invite" action next to their owned workspace(s) (owner-only per the backend's role check) opening a one-field email + role picker screen (`POST /workspaces/:id/members`).
+Where invite lives: originally a small "Invite" action in the workspace popup. Moved onto the workspace screen when workspace administration was built — see above. The popup's per-row button opens that screen; the popup itself now only switches workspaces and creates new ones.
 
 ---
 

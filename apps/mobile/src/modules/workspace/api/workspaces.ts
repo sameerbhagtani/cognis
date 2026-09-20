@@ -18,3 +18,15 @@ export async function createWorkspace(name: string): Promise<Workspace> {
 
     return data.data;
 }
+
+/** Owner only. Emits workspace:updated to everyone in the workspace's room. */
+export async function renameWorkspace(workspaceId: string, name: string): Promise<Workspace> {
+    const { data } = await api.patch<ApiSuccess<Workspace>>(`/workspaces/${workspaceId}`, { name });
+
+    return data.data;
+}
+
+/** Owner only, and takes everything inside the workspace with it. */
+export async function deleteWorkspace(workspaceId: string): Promise<void> {
+    await api.delete(`/workspaces/${workspaceId}`);
+}

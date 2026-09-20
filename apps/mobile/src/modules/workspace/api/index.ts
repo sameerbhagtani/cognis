@@ -1,2 +1,2 @@
-export { fetchWorkspaces, createWorkspace } from "./workspaces";
-export { inviteMember } from "./members";
+export { fetchWorkspaces, createWorkspace, renameWorkspace, deleteWorkspace } from "./workspaces";
+export { fetchMembers, inviteMember, updateMemberRole, removeMember } from "./members";

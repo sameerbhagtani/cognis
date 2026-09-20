@@ -25,3 +25,20 @@ export type WorkspaceMember = {
     createdAt: string;
     updatedAt: string;
 };
+
+/**
+ * What `GET /workspaces/:id/members` returns, which is a different shape from
+ * the row `POST` gives back: it joins the user in and leaves out workspaceId
+ * and updatedAt. Sorted by the user's name, server-side.
+ */
+export type WorkspaceMemberDetail = {
+    id: string;
+    role: WorkspaceRole;
+    createdAt: string;
+    user: {
+        id: string;
+        name: string;
+        email: string;
+        image: string | null;
+    };
+};

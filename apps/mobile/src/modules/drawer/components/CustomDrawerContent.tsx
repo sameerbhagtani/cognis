@@ -61,9 +61,14 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
         router.replace(next === "ai" ? "/chat" : "/");
     }
 
-    function navigateTo(path: "/create-workspace" | "/invite-member" | "/settings") {
+    function navigateTo(path: "/create-workspace" | "/settings") {
         closeDrawer();
         router.push(path);
+    }
+
+    function openWorkspace(workspaceId: string) {
+        closeDrawer();
+        router.push({ pathname: "/workspace/[workspaceId]", params: { workspaceId } });
     }
 
     async function startChat() {
@@ -167,7 +172,7 @@ export function CustomDrawerContent(props: DrawerContentComponentProps) {
                 isPopupOpen={isPopupOpen}
                 onTogglePopup={() => setIsPopupOpen((open) => !open)}
                 onCreateWorkspace={() => navigateTo("/create-workspace")}
-                onInviteMember={() => navigateTo("/invite-member")}
+                onOpenWorkspace={openWorkspace}
                 onOpenSettings={() => navigateTo("/settings")}
                 onSwitchWorkspace={(workspaceId) => {
                     selectWorkspace(workspaceId);
