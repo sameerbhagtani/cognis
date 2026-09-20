@@ -1,6 +1,7 @@
 import { z, ZodError } from "zod";
 
 import ApiError from "../utils/ApiError.js";
+import mapDatabaseError from "../utils/databaseError.js";
 
 import type { NextFunction, Request, Response } from "express";
 
@@ -12,15 +13,20 @@ export default function errorHandler(
     res: Response,
     _next: NextFunction,
 ) {
-    if (err instanceof ApiError) {
-        return res.status(err.statusCode).json({
+    // A constraint failure arrives wrapped by Drizzle, so it is translated first
+    // and then reported by the ApiError branch like anything else. Unrecognised
+    // database errors map to null and fall through to the 500.
+    const error = mapDatabaseError(err) ?? err;
+
+    if (error instanceof ApiError) {
+        return res.status(error.statusCode).json({
             success: false,
-            message: err.message,
+            message: error.message,
         });
     }
 
     // express.json() rejects unparseable bodies with a SyntaxError carrying the raw body.
-    if (err instanceof SyntaxError && "body" in err) {
+    if (error instanceof SyntaxError && "body" in error) {
         return res.status(400).json({
             success: false,
             message: "Malformed JSON body",
@@ -29,7 +35,7 @@ export default function errorHandler(
 
     // Oversized bodies arrive as an http-errors 413; without this a long note
     // would be reported as a server fault.
-    if ("type" in err && err.type === "entity.too.large") {
+    if ("type" in error && error.type === "entity.too.large") {
         return res.status(413).json({
             success: false,
             message: "Request body too large",
@@ -38,15 +44,15 @@ export default function errorHandler(
 
     // treeifyError over flattenError: flatten drops everything to formErrors on
     // union schemas, which would leave the client with no usable detail.
-    if (err instanceof ZodError) {
+    if (error instanceof ZodError) {
         return res.status(400).json({
             success: false,
             message: "Validation failed",
-            errors: z.treeifyError(err),
+            errors: z.treeifyError(error),
         });
     }
 
-    console.error(err);
+    console.error(error);
 
     return res.status(500).json({
         success: false,
