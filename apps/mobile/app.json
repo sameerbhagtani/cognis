@@ -5,7 +5,7 @@
         "version": "1.0.0",
         "orientation": "default",
         "icon": "./assets/images/icon.png",
-        "scheme": "mobile",
+        "scheme": "cognis",
         "userInterfaceStyle": "automatic",
         "ios": {
             "icon": "./assets/expo.icon"
@@ -26,13 +26,20 @@
         "plugins": [
             "expo-router",
             [
+                "expo-status-bar",
+                {
+                    "hidden": false
+                }
+            ],
+            [
                 "expo-splash-screen",
                 {
                     "backgroundColor": "#208AEF",
                     "image": "./assets/images/splash-icon.png",
                     "imageWidth": 76
                 }
-            ]
+            ],
+            "expo-secure-store"
         ],
         "experiments": {
             "typedRoutes": true,
