@@ -49,6 +49,43 @@ export const CHUNKING = {
     charsPerToken: 4,
 } as const;
 
+export const RETRIEVAL = {
+    /**
+     * Below this, the whole workspace goes in and no search happens — better
+     * answers, and no chance of retrieving the wrong thing.
+     *
+     * Set by budget, not by capacity. The model's window is 1.05M tokens, so
+     * almost any workspace would fit; inlining 15k tokens simply costs about
+     * three times what a focused retrieval does, on every single message.
+     */
+    inlineThresholdTokens: 6_000,
+
+    topK: 6,
+
+    /** Titles are short, but a very large workspace still needs a ceiling. */
+    noteIndexLimit: 200,
+} as const;
+
+export const CHAT = {
+    /**
+     * Output is billed at six times input, so this is the strongest cost lever
+     * there is — stronger than trimming retrieved context.
+     */
+    maxOutputTokens: 800,
+
+    maxHistoryTurns: 10,
+    maxHistoryTokens: 2_000,
+
+    /**
+     * Rewriting a follow-up into a standalone search query costs one small call,
+     * but only when there is history to resolve *and* the workspace is large
+     * enough that we search at all. On the inline path every note is already in
+     * context, so retrieval quality is moot and the rewrite is skipped.
+     */
+    condenseHistoryTurns: 3,
+    condenseMaxOutputTokens: 60,
+} as const;
+
 export const EMBEDDING_FRESHNESS = {
     /** Embed once typing stops, not once per keystroke. */
     debounceMs: 5_000,

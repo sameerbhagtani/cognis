@@ -21,7 +21,7 @@ Unlike the Phase 1 document, this one describes what is _planned_, not what is b
 - Chats that span more than one workspace. A chat belongs to exactly one.
 - Shared or collaborative chats. Yours are yours alone.
 - Uploading files. Only notes are searchable.
-- Tool calling or agentic behaviour. One question, one answer.
+- Tool calling or agentic behaviour. The model cannot fetch anything itself; it answers from what it is given.
 
 ---
 
@@ -190,6 +190,41 @@ This is cheap, since titles are capped at 50 characters, and it fixes the most a
 
 For very large workspaces the index is capped at the most recently updated notes.
 
+### Follow-up questions
+
+A short reply carries no meaning on its own. Embedding "yes" and searching for it returns effectively random chunks, so a note the assistant just offered to read is no more likely to come back than before. The same goes for "tell me more", "why?" and "the second one".
+
+That matters most for a specific exchange this design invites. The note index lets the assistant say _"you have a note called Deployment checklist, shall I read it?"_ — and without a fix, saying yes retrieves nothing useful and the assistant either repeats itself or invents an answer.
+
+So before searching, a small model call rewrites the latest message into a standalone query using the recent turns:
+
+```
+"what did I write about deployment?"
+"...you have a note called Deployment checklist, want me to read it?"
+"yes"                    →  "Deployment checklist"
+```
+
+Measured against a test corpus, that moves the offered note from distance 0.817 to 0.422 — from unranked to first by a clear margin.
+
+**It only runs where it can help**, which keeps it close to free:
+
+- **Only with history.** The first message of a chat already stands alone.
+- **Only when searching.** On the inline path every note is already in context, so nothing a better query could improve.
+
+Since a workspace stays on the inline path until it passes 6,000 tokens, this will rarely fire for some time. It needs to exist for when it does.
+
+**The cheap alternative was rejected deliberately.** Embedding the previous turn glued to the current one needs no model call and would fix "yes" — but it breaks on a change of subject, where the old topic then pollutes the query. That makes retrieval worse on the common path to fix the uncommon one. A model reading _"actually, forget that — what about sourdough?"_ gets it right.
+
+**A failed rewrite is never fatal.** If the call errors, or returns something implausible, the raw question is searched instead. That is simply the behaviour without this step: degraded retrieval, not a broken chat.
+
+The proper long-term answer is letting the model retrieve for itself through tool calls, which subsumes rewriting entirely — it writes its own queries and can read a named note on request. That is a later phase; per message it means several model round trips instead of one, which roughly doubles to triples the cost.
+
+### The system prompt differs by strategy
+
+The two paths can honestly promise different things, and one instruction for both makes the model offer what the plumbing cannot deliver.
+
+On the **inline** path it holds every note in full, so offering to "look at" one is nonsense — it already has. On the **retrieved** path it holds excerpts plus the index, so offering is right, and the rewrite above is what makes the offer keepable.
+
 ### Prompt order matters for cost
 
 OpenAI charges less for input it has seen before, but only when the _beginning_ of the prompt matches. So the prompt is built stable-first:
@@ -200,6 +235,10 @@ OpenAI charges less for input it has seen before, but only when the _beginning_ 
 ```
 
 Putting the question first, or mixing the stable and variable parts together, means nothing matches and the discount is lost. It costs nothing to build it in this order from the start and is irritating to retrofit. The exact caching rules get verified against the SDK before this is relied upon.
+
+This is also why the two strategies place their notes differently. **Inlined notes go in the system message**, because on that path the content is the same every turn and belongs in the cacheable prefix. **Retrieved chunks go with the question**, because they change with every question and would destroy the prefix if placed any earlier. History sits between the two, which keeps the prefix stable as a chat grows — earlier turns never change — until the conversation is long enough that trimming starts dropping its oldest turns.
+
+**Embedding the question is recorded but not gated.** It is an embedding call made during a chat, so it lands in the ledger under `embedding` and counts toward the indexing budget. It is deliberately not _checked_ against it: a question costs well under a micro-dollar, and refusing to chat because a day of heavy writing exhausted the indexing allowance would be a baffling way to fail. What gates a chat is the chat budget and the global ceiling.
 
 ### The line that must never be wrong
 
@@ -401,13 +440,13 @@ It writes a `user_ai_limit` row, validating that the user exists first, so raisi
 
 Each step is reviewed before the next begins.
 
-| Step    | What lands                                                                  |
-| ------- | --------------------------------------------------------------------------- |
-| **2.1** | `pgvector` image, extension, all six tables, HNSW index. No behaviour.      |
-| **2.2** | Splitting, embedding, content hashing, the debounce, the worker, backfill.  |
-| **2.3** | Retrieval, the note index, context assembly. Inspectable without any model. |
-| **2.4** | Chat and message endpoints, ownership rules, spend ledger and limits.       |
-| **2.5** | The model call, streaming over the socket, citations, usage recording.      |
+| Step    | What lands                                                                 |
+| ------- | -------------------------------------------------------------------------- |
+| **2.1** | `pgvector` image, extension, all six tables, HNSW index. No behaviour.     |
+| **2.2** | Splitting, embedding, content hashing, the debounce, the worker, backfill. |
+| **2.3** | Retrieval, the note index, context assembly, follow-up rewriting.          |
+| **2.4** | Chat and message endpoints, ownership rules, spend ledger and limits.      |
+| **2.5** | The model call, streaming over the socket, citations, usage recording.     |
 
 Steps 2.1 through 2.4 cost nothing to run beyond embeddings. The first real spending starts at 2.5.
 
