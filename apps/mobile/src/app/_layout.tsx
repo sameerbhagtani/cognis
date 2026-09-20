@@ -1,10 +1,12 @@
-import { useState } from "react";
-import { Stack } from "expo-router";
+import { useMemo, useState } from "react";
+import { Stack, ThemeProvider as NavigationThemeProvider } from "expo-router";
 import { KeyboardProvider } from "react-native-keyboard-controller";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 
 import { authClient } from "@/lib/auth";
 import ThemeProvider from "@/lib/theme/ThemeProvider";
+import useTheme from "@/lib/theme/useTheme";
+import { buildNavigationTheme } from "@/lib/theme/navigationTheme";
 
 export default function RootLayout() {
     const { data: session, isPending } = authClient.useSession();
@@ -30,23 +32,42 @@ export default function RootLayout() {
         return null;
     }
 
-    const isLoggedIn = Boolean(session);
-
     return (
         <SafeAreaProvider>
             <KeyboardProvider>
                 <ThemeProvider>
-                    <Stack screenOptions={{ headerShown: false }}>
-                        <Stack.Protected guard={!isLoggedIn}>
-                            <Stack.Screen name="(auth)" />
-                        </Stack.Protected>
-
-                        <Stack.Protected guard={isLoggedIn}>
-                            <Stack.Screen name="(app)" />
-                        </Stack.Protected>
-                    </Stack>
+                    <RootNavigator isLoggedIn={Boolean(session)} />
                 </ThemeProvider>
             </KeyboardProvider>
         </SafeAreaProvider>
+    );
+}
+
+/**
+ * Split out so it sits inside our ThemeProvider and can feed React Navigation a
+ * matching theme. Note this is expo-router's own ThemeProvider, not the one from
+ * @react-navigation/native - expo-router bundles its own fork, and a theme given
+ * to the other copy never reaches its navigators.
+ */
+function RootNavigator({ isLoggedIn }: { isLoggedIn: boolean }) {
+    const { theme, themeMode } = useTheme();
+
+    const navigationTheme = useMemo(
+        () => buildNavigationTheme(theme, themeMode),
+        [theme, themeMode],
+    );
+
+    return (
+        <NavigationThemeProvider value={navigationTheme}>
+            <Stack screenOptions={{ headerShown: false }}>
+                <Stack.Protected guard={!isLoggedIn}>
+                    <Stack.Screen name="(auth)" />
+                </Stack.Protected>
+
+                <Stack.Protected guard={isLoggedIn}>
+                    <Stack.Screen name="(app)" />
+                </Stack.Protected>
+            </Stack>
+        </NavigationThemeProvider>
     );
 }

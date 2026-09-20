@@ -11,7 +11,7 @@ This describes the Phase 1 backend as it is built, not as it was planned. Everyt
 - Auth, via Better Auth
 - Notes, organised into folders
 - Everything scoped to a workspace
-- Read-only sharing, by giving someone the `viewer` role on a workspace
+- Sharing a workspace by role: an `editor` can create and change folders and notes, a `viewer` can only read
 
 **Out:**
 

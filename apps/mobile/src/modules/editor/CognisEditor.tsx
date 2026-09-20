@@ -8,6 +8,8 @@ import type { EditorCommand, EditorEvent } from "@cognis/editor-web/protocol";
 export type CognisEditorHandle = {
     exec: (command: EditorCommand) => void;
     getContent: () => Promise<string>;
+    /** Drops focus inside the WebView - also what clears Android's selection handle. */
+    blur: () => void;
 };
 
 type CognisEditorProps = {
@@ -55,6 +57,9 @@ export const CognisEditor = forwardRef<CognisEditorHandle, CognisEditorProps>(fu
                 pendingGets.current.set(messageId, resolve);
                 runJs(`window.cognisEditor.getContent(${JSON.stringify(messageId)})`);
             });
+        },
+        blur() {
+            runJs("window.cognisEditor.blur()");
         },
     }));
 

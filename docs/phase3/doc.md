@@ -43,11 +43,29 @@ The `mobile` branch was merged in with some early screens already built. Audited
 
 **Out, deliberately deferred:**
 
+- **Workspace administration**, as its own later phase — see below.
 - Trash browsing/restore UI (soft-deletes still happen; there's just no screen to browse or restore them yet).
-- Editing or removing a member's role (invite-by-email only).
 - True drag-and-drop reordering of the file tree (see Sidebar → Notes mode).
 - Offline support, local caching, push notifications.
 - Any change to `apps/landing`.
+
+### Workspace administration, deferred
+
+Five backend routes stay unused for now. Creating a workspace and inviting someone is enough to get a person working; managing what already exists is comparatively low-traffic, and notes and chat are the actual product.
+
+| Route                                      | What it does                     |
+| ------------------------------------------ | -------------------------------- |
+| `GET /workspaces/:id/members`              | List who's in the workspace      |
+| `PATCH /workspaces/:id/members/:memberId`  | Change someone's role            |
+| `DELETE /workspaces/:id/members/:memberId` | Remove someone                   |
+| `PATCH /workspaces/:id`                    | Rename the workspace             |
+| `DELETE /workspaces/:id`                   | Delete it, and everything inside |
+
+These belong together on one owner-gated **Workspace settings** screen, reached from the workspace switcher — not on the Settings screen, which is scoped to app preferences (theme, account, usage, sign out) rather than workspace administration.
+
+The missing member list is the sharpest edge of deferring this: you can invite someone and then have no way to see who has access. Worth weighing if this slips far.
+
+`GET /workspaces/:id` stays unused regardless — the list endpoint already returns each workspace with the caller's role, so there's nothing left to fetch.
 
 ---
 

@@ -26,6 +26,7 @@ declare global {
             getContent: (messageId: string) => void;
             setReadOnly: (readOnly: boolean) => void;
             exec: (command: EditorCommand) => void;
+            blur: () => void;
         };
     }
 }
@@ -81,6 +82,13 @@ window.cognisEditor = {
     },
     exec(command) {
         runCommand(view, command);
+    },
+    // Dropping focus is what dismisses Android's selection handle - that
+    // floating "waterdrop" under the caret is a native popup window, so it
+    // draws over the drawer rather than under it while the editor stays
+    // focused. Hiding the RN keyboard alone doesn't clear it.
+    blur() {
+        view.contentDOM.blur();
     },
 };
 

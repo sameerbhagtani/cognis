@@ -5,8 +5,11 @@ import { ApiClientError } from "./ApiClientError";
 
 import type { ApiFailure } from "./types";
 
+// Every Cognis route lives under /api, so it belongs in the base rather than
+// at each call site. Better Auth's own routes don't come through here - its
+// client has its own baseURL.
 export const api = create({
-    baseURL: process.env.EXPO_PUBLIC_SERVER_URL,
+    baseURL: `${process.env.EXPO_PUBLIC_SERVER_URL}/api`,
 });
 
 // authClient's own fetch (used only for /api/auth/*) attaches the Better Auth

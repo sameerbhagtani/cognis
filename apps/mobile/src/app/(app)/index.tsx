@@ -1,13 +1,14 @@
-import { useRef, useState } from "react";
-import { Pressable, StyleSheet, View } from "react-native";
+import { useEffect, useRef, useState } from "react";
+import { Keyboard, Pressable, StyleSheet, View } from "react-native";
 import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { StatusBar } from "expo-status-bar";
+import { useDrawerStatus } from "expo-router/drawer";
 import { KeyboardStickyView } from "react-native-keyboard-controller";
 import MaterialCommunityIcons from "@expo/vector-icons/MaterialCommunityIcons";
 
 import useTheme from "@/lib/theme/useTheme";
 import { CognisEditor, EditorToolbar, type CognisEditorHandle } from "@/modules/editor";
-import { handleSignout } from "@/modules/auth/api";
+import { ScreenHeader } from "@/modules/drawer";
 
 import type { EditorCommand } from "@cognis/editor-web/protocol";
 
@@ -31,6 +32,18 @@ export default function Index() {
     const editorRef = useRef<CognisEditorHandle>(null);
     const [readOnly, setReadOnly] = useState(false);
     const insets = useSafeAreaInsets();
+    const drawerStatus = useDrawerStatus();
+
+    // Opening the drawer over a focused editor left the keyboard up and, worse,
+    // left Android's selection handle floating above the drawer - it's a native
+    // popup window, so it isn't clipped by anything drawn over it. Blurring the
+    // WebView is what actually clears it; dismissing the keyboard alone doesn't.
+    useEffect(() => {
+        if (drawerStatus === "open") {
+            Keyboard.dismiss();
+            editorRef.current?.blur();
+        }
+    }, [drawerStatus]);
 
     function handleCommand(command: EditorCommand) {
         editorRef.current?.exec(command);
@@ -40,20 +53,17 @@ export default function Index() {
         <View style={[styles.container, { backgroundColor: theme.background }]}>
             <SafeAreaView edges={["top", "left", "right"]} style={styles.container}>
                 <StatusBar style="auto" />
-                <View style={styles.header}>
-                    {/* Temporary — belongs in Settings once that screen exists. Here
-                     *  purely so auth flows are testable without clearing app data. */}
-                    <Pressable onPress={() => handleSignout()} hitSlop={8}>
-                        <MaterialCommunityIcons name="logout" size={22} color={theme.foreground} />
-                    </Pressable>
-                    <Pressable onPress={() => setReadOnly((prev) => !prev)} hitSlop={8}>
-                        <MaterialCommunityIcons
-                            name={readOnly ? "pencil-outline" : "book-open-variant"}
-                            size={22}
-                            color={theme.foreground}
-                        />
-                    </Pressable>
-                </View>
+                <ScreenHeader
+                    action={
+                        <Pressable onPress={() => setReadOnly((prev) => !prev)} hitSlop={8}>
+                            <MaterialCommunityIcons
+                                name={readOnly ? "pencil-outline" : "book-open-variant"}
+                                size={22}
+                                color={theme.foreground}
+                            />
+                        </Pressable>
+                    }
+                />
                 <CognisEditor
                     ref={editorRef}
                     initialContent={SPIKE_CONTENT}
@@ -82,11 +92,5 @@ export default function Index() {
 const styles = StyleSheet.create({
     container: {
         flex: 1,
-    },
-    header: {
-        flexDirection: "row",
-        justifyContent: "space-between",
-        paddingHorizontal: 16,
-        paddingVertical: 8,
     },
 });
