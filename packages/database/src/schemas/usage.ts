@@ -51,7 +51,19 @@ export const aiUsage = pgTable(
 
         createdAt: timestamp("created_at").defaultNow().notNull(),
     },
-    (table) => [index("ai_usage_userId_createdAt_idx").on(table.userId, table.createdAt)],
+    (table) => [
+        // The spend check before every paid call: one user, last 24 hours.
+        index("ai_usage_userId_createdAt_idx").on(table.userId, table.createdAt),
+
+        // These three exist for the SET NULL above, not for any query we write.
+        // When a note is purged or a chat deleted, Postgres has to find the rows
+        // pointing at it to clear the reference, once per deleted parent row.
+        // Without an index that is a full scan of a table which only ever grows,
+        // so deleting a workspace would get slower for the life of the product.
+        index("ai_usage_workspaceId_idx").on(table.workspaceId),
+        index("ai_usage_messageId_idx").on(table.messageId),
+        index("ai_usage_noteId_idx").on(table.noteId),
+    ],
 );
 
 /**

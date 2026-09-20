@@ -32,8 +32,19 @@ export const chat = pgTable(
             .notNull(),
     },
     (table) => [
-        index("chat_userId_updatedAt_idx").on(table.userId, table.updatedAt.desc()),
-        index("chat_workspaceId_userId_idx").on(table.workspaceId, table.userId),
+        // One index for the one query that lists chats: always scoped to a
+        // workspace and a user, always newest first. Carrying updatedAt as the
+        // third column means the ordering comes out of the index rather than
+        // needing a sort afterwards.
+        //
+        // nullsFirst matters: a plain ORDER BY ... DESC means DESC NULLS FIRST
+        // in Postgres, and an index built NULLS LAST does not satisfy it, so the
+        // planner would add the sort straight back.
+        index("chat_workspaceId_userId_updatedAt_idx").on(
+            table.workspaceId,
+            table.userId,
+            table.updatedAt.desc().nullsFirst(),
+        ),
     ],
 );
 

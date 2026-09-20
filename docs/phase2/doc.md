@@ -119,6 +119,26 @@ Ids follow Phase 1's convention: UUID throughout, except references to `user.id`
 
 **The usage ledger does not cascade.** `ai_usage` points at a message and a note with `ON DELETE SET NULL` rather than `CASCADE`. Deleting a chat must not erase the record of what it cost. The ledger also stores **raw token counts, never money**, so a price change leaves history intact — cost is calculated from a price table at read time.
 
+### Indexes
+
+Same rule as Phase 1: index any column that appears in a `WHERE`, `JOIN ON` or `ORDER BY` on a table that will grow, and foreign keys especially, since Postgres indexes primary keys automatically but not the keys pointing at them.
+
+| Table        | Index                                      | Why                                                                                     |
+| ------------ | ------------------------------------------ | --------------------------------------------------------------------------------------- |
+| `chat`       | `(workspaceId, userId, updatedAt DESC)`    | The one query that lists chats. Filtering and ordering both come out of the index.      |
+| `message`    | `(chatId, createdAt)`                      | Opening a conversation, already in order                                                |
+| `note_chunk` | `(workspaceId)`                            | The retrieval filter, and finding chunks when a workspace is deleted                    |
+| `note_chunk` | HNSW on `embedding`                        | The vector search itself                                                                |
+| `note_chunk` | `(noteId, chunkIndex)` UNIQUE              | Stops two chunks claiming one position, and covers `noteId` through its leftmost column |
+| `ai_usage`   | `(userId, createdAt)`                      | The spend check before every paid call: one user, last 24 hours                         |
+| `ai_usage`   | `(workspaceId)`, `(messageId)`, `(noteId)` | Not for any query we write. See below.                                                  |
+
+`note_embedding_state` and `user_ai_limit` need nothing extra. Both are keyed by the id they are always looked up by, so the primary key is the index.
+
+**The last three exist for `ON DELETE SET NULL`, not for reads.** When a note is purged or a chat deleted, Postgres has to find the ledger rows pointing at it so it can clear the reference, and it runs that lookup once per deleted parent row. Without an index each one is a full scan of a table that only ever grows, so deleting a workspace with a hundred notes would mean a hundred scans of the entire ledger, getting slower for the life of the product.
+
+**The chat index is deliberately three columns, ordered `NULLS FIRST`.** A plain `ORDER BY updatedAt DESC` means `DESC NULLS FIRST` in Postgres, and an index built `NULLS LAST` does not satisfy it, so the planner adds the sort straight back. The column is `NOT NULL`, so this makes no semantic difference at all, but the planner is literal about it.
+
 ---
 
 ## How a note becomes searchable

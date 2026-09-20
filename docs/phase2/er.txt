@@ -96,8 +96,7 @@ chat [icon: message-circle, color: purple] {
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL
 
-  // INDEX (userId, updatedAt DESC)
-  // INDEX (workspaceId, userId)
+  // INDEX (workspaceId, userId, updatedAt DESC)
 }
 
 workspace.id < chat.workspaceId
@@ -169,6 +168,9 @@ ai_usage [icon: dollar-sign, color: red] {
   createdAt TIMESTAMP NOT NULL
 
   // INDEX (userId, createdAt)
+  // INDEX (workspaceId)
+  // INDEX (messageId)
+  // INDEX (noteId)
 }
 
 user.id < ai_usage.userId
