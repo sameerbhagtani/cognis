@@ -118,9 +118,11 @@ There is no "delete forever" button. Keeping hard deletion to one path means one
 
 ## Concurrency
 
-Three operations read the folder tree and then write to it: **moving** a folder, **soft deleting**, and **restoring**. The purge job does too. Each checks a condition that another one can invalidate before the write lands.
+Every operation that reads the folder tree and then writes to it does so under a **transaction-scoped Postgres advisory lock on the workspace**, with the read inside the lock. That is **creating** a folder or a note, **moving** either one, **soft deleting**, **restoring**, and the purge job. Each checks a condition that another one can invalidate before the write lands.
 
-All four take a **transaction-scoped Postgres advisory lock on the workspace**, and do their reading inside it.
+Two different things go wrong without it — a **cycle**, where two moves each pass their own check and commit, and an **orphan**, where the parent a row was checked against is trashed before the row lands.
+
+**A title or content edit stays outside the lock.** It reads no tree structure, and autosave is by far the most frequent write here. Putting it on the workspace lock would serialise every keystroke against every move, delete and restore in that workspace.
 
 ### Why a lock, and why on the workspace
 
@@ -128,11 +130,21 @@ Row locks do not help. Two moves that would form a cycle — X under Y, and Y un
 
 An advisory lock costs nothing when uncontended, blocks no readers, and releases on commit or rollback. `SERIALIZABLE` would also work, but it surfaces as an error the caller has to retry, and there is no retry machinery here.
 
+### Orphaned rows
+
+A create or a move checks that its target is live — the parent folder, or the folder a note is going into. Outside a lock, a soft delete landing between that check and the write leaves a live row under a trashed parent. It is missing from the tree because its parent is gone, missing from the trash because it was never deleted, and unrecoverable because restore works by batch and it belongs to none.
+
+The delete cascade cannot catch it either. The cascade stamps everything currently inside the folder, and the new row does not exist yet when it runs.
+
+Under the lock both orderings end somewhere valid. If the delete commits first, the create or move re-reads inside the lock, finds the target trashed, and returns `404`. If the create commits first, the delete's cascade sees the row and stamps it with the rest of the batch.
+
+A folder or note created at the **workspace root** has no parent that could be trashed underneath it, so it skips the lock and inserts directly. The same goes for a move to the root.
+
 ### Folder cycles
 
 A self-referencing foreign key guarantees the parent exists. It does not prevent a loop.
 
-A cycle can only appear when a folder is **moved**. Creating a folder cannot cause one, since a new folder has no descendants. So before a move commits, the same descendant walk used by the delete cascade runs, and the move is rejected if the new parent is the folder itself or any of its descendants.
+A cycle can only appear when a folder is **moved**. Creating a folder cannot cause one, since a new folder has no descendants — a create holds the lock for the orphan case above, not this one. So before a move commits, the same descendant walk used by the delete cascade runs, and the move is rejected if the new parent is the folder itself or any of its descendants.
 
 This matters because a cycle would make every recursive query over that tree run forever. As a second line of defence the descendant CTE uses `UNION` rather than `UNION ALL` — identical results for a tree, where each node is reached once, but `UNION` stops on the duplicate if a cycle ever did exist, instead of spinning until the query is killed.
 
@@ -147,6 +159,7 @@ This matters because a cycle would make every recursive query over that tree run
 - **Errors share one shape:** `{ success, message }`, with a `429` also carrying `Retry-After`, and validation failures carrying an `errors` tree.
 - **A malformed UUID in a path returns `400`.** Passing one to Postgres is a driver error rather than an empty result, so it is rejected before it reaches a query.
 - **Request bodies are capped at 1mb**, above which the response is `413`. The default of 100kb is too small for a long note.
+- **A request that loses a race reports the outcome, not a server fault.** A foreign key violation means a row the request referenced was deleted while it ran, and returns `404`, the same as any other missing row. A unique violation means someone inserted the same row first, and returns `409`. Every other constraint failure is our bug and stays `500`.
 
 ### Auth
 
@@ -178,6 +191,8 @@ Owner-only actions check `workspace.ownerId`, not the member role.
 | `DELETE /workspaces/:workspaceId/members/:memberId` | owner      | Immediate, no trash      |
 
 **Members are added by email, never by user id.** The client is inviting a person, and it has no way to know a stranger's user id.
+
+**The address is normalised before anything is done with it.** Better Auth lowercases every email it writes, so every stored `user.email` is lowercase. The invite schema normalises to that same form once, and both the user lookup and the rate-limit key are taken from the result — so an address typed with a capital letter still finds the person it belongs to, and is counted under the same key.
 
 **Role is limited to `editor` or `viewer`.** Promoting someone to `owner` would be an ownership transfer, and Phase 1 has no endpoint for that.
 
@@ -311,7 +326,9 @@ Everything else is limited per bucket. The numbers live together in `shared/conf
 
 ### Why three of these are keyed oddly
 
-**Folder and note writes count against the user _and_ the workspace together.** Moves, deletes and restores serialise on the workspace advisory lock, so flooding them at one workspace stalls it for everyone in it. A per-user count alone would not stop that.
+**Folder and note writes count against the user _and_ the workspace together.** Creates, moves, deletes and restores all serialise on the workspace advisory lock, so flooding them at one workspace stalls it for everyone in it. A per-user count alone would not stop that.
+
+Restoring a trash batch spends from this bucket too, but from inside the handler rather than as middleware. The route carries no workspace id, so there is nothing to key on until the batch has named its own workspace, and the point is spent after the access check so the budget cannot be burnt through batches the caller cannot reach.
 
 **Note edits get their own, looser bucket.** Autosave is legitimately chatty and should not spend the same allowance as structural writes.
 
