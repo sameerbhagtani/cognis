@@ -30,6 +30,16 @@
                 padding-inline: 16px;
             }
         </style>
+        <!--
+         * Applied here rather than from the bridge so the first paint is
+         * already the right colour. The host writes __cognisTheme via the
+         * WebView's before-content-loaded hook, which runs ahead of this
+         * document's own scripts; dark is the package's default, so it is
+         * also the fallback if nothing set it.
+        -->
+        <script>
+            document.documentElement.dataset.theme = window.__cognisTheme || "dark";
+        </script>
     </head>
     <body>
         <div id="editor" class="atomic-cm-editor"></div>

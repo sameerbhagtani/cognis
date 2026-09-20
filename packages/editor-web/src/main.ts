@@ -16,7 +16,7 @@ import "@atomic-editor/editor/styles.css";
 
 import { runCommand } from "./commands";
 
-import type { EditorCommand, EditorEvent } from "./protocol";
+import type { EditorCommand, EditorEvent, EditorTheme } from "./protocol";
 
 declare global {
     interface Window {
@@ -25,9 +25,13 @@ declare global {
             setContent: (content: string) => void;
             getContent: (messageId: string) => void;
             setReadOnly: (readOnly: boolean) => void;
+            setTheme: (theme: EditorTheme) => void;
             exec: (command: EditorCommand) => void;
             blur: () => void;
         };
+        /** Written by the host before this document's scripts run, so the first
+         *  paint already uses the right palette. See index.html. */
+        __cognisTheme?: EditorTheme;
     }
 }
 
@@ -89,6 +93,13 @@ window.cognisEditor = {
     },
     setReadOnly(readOnly) {
         view.dispatch({ effects: readOnlyCompartment.reconfigure(readOnlyExtension(readOnly)) });
+    },
+    // The package's light palette is opt-in: it re-maps every
+    // `--atomic-editor-*` variable under `[data-theme="light"]`, and its dark
+    // values are the plain defaults. So switching themes is one attribute,
+    // not a CodeMirror reconfigure.
+    setTheme(theme) {
+        document.documentElement.dataset.theme = theme;
     },
     exec(command) {
         runCommand(view, command);

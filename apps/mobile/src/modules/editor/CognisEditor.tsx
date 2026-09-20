@@ -5,6 +5,8 @@ import { WebView, type WebViewMessageEvent } from "react-native-webview";
 import { editorHtml } from "@cognis/editor-web";
 import type { EditorCommand, EditorEvent } from "@cognis/editor-web/protocol";
 
+import useTheme from "@/lib/theme/useTheme";
+
 export type CognisEditorHandle = {
     exec: (command: EditorCommand) => void;
     getContent: () => Promise<string>;
@@ -29,10 +31,17 @@ export const CognisEditor = forwardRef<CognisEditorHandle, CognisEditorProps>(fu
     { initialContent, readOnly = false, onChange, onLinkPress },
     ref,
 ) {
+    const { themeMode } = useTheme();
+
     const webviewRef = useRef<WebView>(null);
     const pendingGets = useRef(new Map<string, (content: string) => void>());
     const initialContentRef = useRef(initialContent);
     const [ready, setReady] = useState(false);
+
+    // Read once: it seeds the document before its scripts run, and changing it
+    // later would have no effect without a reload. Live switches go through
+    // setTheme below instead.
+    const initialThemeModeRef = useRef(themeMode);
 
     function runJs(script: string) {
         webviewRef.current?.injectJavaScript(`${script}; true;`);
@@ -46,6 +55,10 @@ export const CognisEditor = forwardRef<CognisEditorHandle, CognisEditorProps>(fu
     useEffect(() => {
         if (ready) runJs(`window.cognisEditor.setReadOnly(${JSON.stringify(readOnly)})`);
     }, [ready, readOnly]);
+
+    useEffect(() => {
+        if (ready) runJs(`window.cognisEditor.setTheme(${JSON.stringify(themeMode)})`);
+    }, [ready, themeMode]);
 
     useImperativeHandle(ref, () => ({
         exec(command) {
@@ -89,6 +102,12 @@ export const CognisEditor = forwardRef<CognisEditorHandle, CognisEditorProps>(fu
         <WebView
             ref={webviewRef}
             source={{ html: editorHtml }}
+            // Runs ahead of the document's own scripts, which is what lets the
+            // editor's first paint already be the right palette rather than
+            // flashing the dark default on a light screen.
+            injectedJavaScriptBeforeContentLoaded={`window.__cognisTheme = ${JSON.stringify(
+                initialThemeModeRef.current,
+            )}; true;`}
             onMessage={handleMessage}
             style={styles.webview}
             keyboardDisplayRequiresUserAction={false}
