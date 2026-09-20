@@ -181,7 +181,7 @@ user_ai_limit [icon: sliders, color: red] {
 
   chatDailyMicros INTEGER
   indexingDailyMicros INTEGER
-  note TEXT
+  reason TEXT
 
   createdAt TIMESTAMP NOT NULL
   updatedAt TIMESTAMP NOT NULL

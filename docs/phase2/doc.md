@@ -60,7 +60,7 @@ With an external vector database, every one of those becomes a **second write to
 
 Beyond that: one less service to run, secure and back up; and the workspace filter becomes a plain `WHERE` clause rather than something you must remember to pass.
 
-**The honest trade-off.** `pgvector`'s index can return fewer results than asked for when a filter is very selective, because it walks the index and discards rows that do not match. If one workspace is a tiny slice of all vectors, recall suffers. Recent versions handle this with iterative index scans; the exact version shipped by the image gets confirmed during build, and search parameters tuned if needed.
+**The honest trade-off.** `pgvector`'s index can return fewer results than asked for when a filter is very selective, because it walks the index and discards rows that do not match. If one workspace is a tiny slice of all vectors, recall suffers. The image ships **pgvector 0.8.6**, which has iterative index scans for exactly this case, so the tool is there if workspace-filtered recall ever proves short. Nothing is tuned yet — there is no data to tune against.
 
 Revisit this decision if a single workspace ever passes roughly a million chunks. Nothing is close.
 
@@ -363,7 +363,7 @@ SELECT name FROM pg_available_extensions WHERE name LIKE '%vector%';   →  0 ro
 docker compose up -d --force-recreate
 ```
 
-A migration then runs `CREATE EXTENSION IF NOT EXISTS vector` before any table using it.
+**`drizzle-kit` does not emit `CREATE EXTENSION`.** It generates the `vector(1536)` column happily and the migration then fails on any database where the extension is not already enabled. `CREATE EXTENSION IF NOT EXISTS vector;` is prepended to the migration by hand so it is self-contained — worth remembering if a later migration adds another extension.
 
 ### New environment variables
 
