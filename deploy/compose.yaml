@@ -5,7 +5,10 @@
 # Secrets come from deploy/.env (copy .env.example). Values that aren't secret
 # and only make sense in production are fixed here instead.
 
-name: cognis
+# Named apart from the dev compose file at the repo root, which takes "cognis"
+# from its directory - sharing a name lets one file's `down` remove the other's
+# containers.
+name: cognis-prod
 
 x-app-env: &app-env
     NODE_ENV: production
@@ -21,11 +24,12 @@ x-app-env: &app-env
     EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Cognis}
     TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
 
+# api, worker and purge all run this one image. Only api builds it: giving each
+# its own build section makes Compose build and unpack it three times over.
 x-app: &app
     image: cognis-api
-    build:
-        context: ..
-        target: api
+    # Built locally by the api service, never on a registry.
+    pull_policy: never
     environment: *app-env
     restart: unless-stopped
     # Node ignores SIGTERM when it is PID 1, so without an init process every
@@ -67,11 +71,15 @@ services:
 
     api:
         <<: *app
+        pull_policy: build
+        build:
+            context: ..
+            target: api
 
     # The durable half of note indexing - see apps/api/src/jobs/embedNotes.ts.
     worker:
         <<: *app
-        command: ["node", "dist/jobs/embedNotes.js"]
+        command: ["node", "bundle/jobs/embedNotes.mjs"]
 
     # Once a day at 03:00 UTC. A single container, so exactly one purge ever
     # runs at a time however many API replicas there are.
@@ -83,7 +91,7 @@ services:
             - |
                 while true; do
                   sleep $$(( $$(date -ud 'tomorrow 03:00' +%s) - $$(date -u +%s) ))
-                  node dist/jobs/purgeTrash.js
+                  node bundle/jobs/purgeTrash.mjs
                 done
 
     web:

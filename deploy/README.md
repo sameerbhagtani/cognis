@@ -47,15 +47,15 @@ Migrations run automatically before the API restarts.
 ```bash
 docker compose ps                    # what's running
 docker compose logs -f api           # follow a service's logs
-docker compose exec api node dist/jobs/purgeTrash.js   # purge now
+docker compose exec api node bundle/jobs/purgeTrash.mjs   # purge now
 ```
 
 ## Backups
 
-The database lives in the `cognis_postgres_data` volume, which only exists on this server. Dump it somewhere else regularly:
+The database lives in the `cognis-prod_postgres_data` volume, which only exists on this server. Dump it somewhere else regularly:
 
 ```bash
 docker compose exec -T postgres sh -c 'pg_dump -U "$POSTGRES_USER" -Fc "$POSTGRES_DB"' > cognis-$(date +%F).dump
 ```
 
-Don't delete the `cognis_caddy_data` volume either: it holds the HTTPS certificates, and Let's Encrypt rate-limits re-issuing them.
+Don't delete the `cognis-prod_caddy_data` volume either: it holds the HTTPS certificates, and Let's Encrypt rate-limits re-issuing them.

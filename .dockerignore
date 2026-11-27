@@ -1,6 +1,7 @@
 # Rebuilt inside the image
 **/node_modules
 **/dist
+**/bundle
 **/.turbo
 **/.astro
 **/.expo

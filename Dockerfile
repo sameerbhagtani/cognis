@@ -32,13 +32,12 @@ RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
 
 RUN pnpm turbo run build --filter=@cognis/api --filter=@cognis/landing
 
-# A self-contained copy of the API with production dependencies only, and the
-# workspace packages it uses copied in rather than symlinked.
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
-    pnpm --filter=@cognis/api deploy --prod /out/api
+# The build above type-checks; this bundles the API and its jobs into a handful
+# of self-contained files, so the runtime image needs no node_modules.
+RUN pnpm --filter=@cognis/api bundle
 
-# The same for the database package, but keeping dev dependencies: that's
-# where drizzle-kit lives, and migrations are all this copy is for.
+# A self-contained copy of the database package, keeping dev dependencies:
+# that's where drizzle-kit lives, and migrations are all this copy is for.
 RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store \
     pnpm --filter=@cognis/database deploy /out/database
 
@@ -55,10 +54,10 @@ CMD ["node_modules/.bin/drizzle-kit", "migrate"]
 FROM node:24-bookworm-slim AS api
 ENV NODE_ENV=production
 WORKDIR /app
-COPY --from=build --chown=node:node /out/api ./
+COPY --from=build --chown=node:node /repo/apps/api/bundle ./bundle
 USER node
 EXPOSE 5000
-CMD ["node", "dist/index.js"]
+CMD ["node", "bundle/index.mjs"]
 
 # ---------------------------------------------------------------------------
 

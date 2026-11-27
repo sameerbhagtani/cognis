@@ -220,6 +220,9 @@ importers:
             "@types/node":
                 specifier: ^26.4.1
                 version: 26.5.1
+            esbuild:
+                specifier: ^0.25.12
+                version: 0.25.12
             eslint:
                 specifier: ^10.10.0
                 version: 10.10.0(jiti@2.7.0)(supports-color@8.1.1)
