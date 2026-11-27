@@ -3,6 +3,7 @@
     "private": true,
     "type": "module",
     "scripts": {
+        "build": "tsc",
         "dev": "drizzle-kit studio",
         "lint": "eslint .",
         "check-types": "tsc --noEmit",
@@ -11,7 +12,11 @@
         "db:push": "drizzle-kit push"
     },
     "exports": {
-        ".": "./src/index.ts"
+        ".": {
+            "@cognis/source": "./src/index.ts",
+            "types": "./src/index.ts",
+            "default": "./dist/index.js"
+        }
     },
     "dependencies": {
         "dotenv": "^17.4.2",

@@ -3,18 +3,19 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "tsx watch src/index.ts",
+        "dev": "tsx watch --conditions=@cognis/source src/index.ts",
         "build": "tsc",
         "start": "node dist/index.js",
         "purge": "node dist/jobs/purgeTrash.js",
-        "purge:dev": "tsx src/jobs/purgeTrash.ts",
+        "purge:dev": "tsx --conditions=@cognis/source src/jobs/purgeTrash.ts",
         "embed": "node dist/jobs/embedNotes.js",
-        "embed:dev": "tsx src/jobs/embedNotes.ts",
-        "ai:limit": "tsx src/jobs/setAiLimit.ts",
+        "embed:dev": "tsx --conditions=@cognis/source src/jobs/embedNotes.ts",
+        "ai:limit": "tsx --conditions=@cognis/source src/jobs/setAiLimit.ts",
         "lint": "eslint .",
         "check-types": "tsc --noEmit"
     },
     "dependencies": {
+        "@cognis/database": "workspace:*",
         "@better-auth/drizzle-adapter": "^1.7.4",
         "@better-auth/expo": "^1.7.4",
         "axios": "^1.20.0",
@@ -29,7 +30,6 @@
         "zod": "^4.5.4"
     },
     "devDependencies": {
-        "@cognis/database": "workspace:*",
         "@cognis/eslint-config": "workspace:*",
         "@cognis/typescript-config": "workspace:*",
         "@types/cookie-parser": "^1.4.10",
