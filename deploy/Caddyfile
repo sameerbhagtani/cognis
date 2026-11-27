@@ -2,6 +2,12 @@
 # DNS for each name must point at this server before the first start.
 
 cognis.in {
+	# The landing page's download button. GitHub's "latest" URL always points
+	# at the newest release, so shipping a version means publishing a release
+	# with the APK attached as cognis.apk - nothing here changes. 302, not 301,
+	# so browsers don't cache the target.
+	redir /download https://github.com/sameerbhagtani/cognis/releases/latest/download/cognis.apk 302
+
 	root * /srv/landing
 	encode zstd gzip
 	file_server

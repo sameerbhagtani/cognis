@@ -1,1 +1,27 @@
 @import "tailwindcss";
+
+/*
+ * The logo's green (#10b981) is the brand colour. Tailwind 4's own emerald
+ * scale moved to oklch and no longer matches it exactly, so the shades are
+ * pinned here instead.
+ *
+ * brand-700 is for filled buttons: white text on the logo green itself is too
+ * low-contrast to read comfortably.
+ */
+@theme {
+    --color-brand-50: #ecfdf5;
+    --color-brand-100: #d1fae5;
+    --color-brand-500: #10b981;
+    --color-brand-600: #059669;
+    --color-brand-700: #047857;
+    --color-brand-800: #065f46;
+
+    --color-ink: #0f172a;
+    --color-muted: #475569;
+    --color-subtle: #64748b;
+}
+
+html {
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}

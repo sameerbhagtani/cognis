@@ -1,20 +1,172 @@
 ---
+import { existsSync } from "node:fs";
+import { join } from "node:path";
+
 import "../styles/global.css";
+
+const title = "Cognis — notes that answer back";
+const description =
+    "Write and organise notes with your team, then ask questions about them in plain language. Cognis answers from your notes alone and shows which ones it used.";
+
+// Served by Caddy as a redirect to the latest GitHub release's APK, so the
+// button never needs touching when a new version ships. See deploy/Caddyfile.
+const downloadHref = "/download";
+
+// The screenshot is optional: drop an app screenshot at public/screenshot.png
+// and the page grows a second column for it. Without one the hero centres.
+const hasScreenshot = existsSync(join(process.cwd(), "public", "screenshot.png"));
+
+const points = [
+    "Shared workspaces for you and your team",
+    "Ask questions about your notes in plain language",
+    "Every answer cites the notes it came from",
+];
 ---
 
 <html lang="en">
     <head>
         <meta charset="utf-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1" />
+        <title>{title}</title>
+        <meta name="description" content={description} />
+        <meta name="theme-color" content="#ffffff" />
+        <link rel="canonical" href={Astro.site} />
+
         <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-        <link rel="icon" href="/favicon.ico" />
-        <meta name="viewport" content="width=device-width" />
-        <meta name="generator" content={Astro.generator} />
-        <title>Cognis</title>
+        <link rel="icon" href="/favicon.ico" sizes="any" />
+        <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+        <meta property="og:type" content="website" />
+        <meta property="og:url" content={Astro.site} />
+        <meta property="og:title" content={title} />
+        <meta property="og:description" content={description} />
     </head>
-    <body
-        class="flex min-h-dvh flex-col items-center justify-center gap-5 text-center text-emerald-700"
-    >
-        <h1 class="text-6xl font-bold">Cognis</h1>
-        <p class="text-xl">Coming Soon</p>
+
+    <body class="text-ink min-h-dvh bg-white font-sans">
+        <div
+            aria-hidden="true"
+            class="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[36rem] bg-[radial-gradient(60%_60%_at_50%_0%,var(--color-brand-50),transparent)]"
+        >
+        </div>
+
+        <div class="mx-auto flex min-h-dvh max-w-6xl flex-col px-6">
+            <header class="flex items-center gap-2.5 py-6">
+                <img src="/logo.svg" alt="" width="26" height="28" class="h-7 w-auto" />
+                <span class="text-lg font-semibold tracking-tight">Cognis</span>
+            </header>
+
+            <main
+                class:list={[
+                    "flex flex-1 items-center py-12 md:py-20",
+                    hasScreenshot ? "" : "justify-center",
+                ]}
+            >
+                <div
+                    class:list={[
+                        "grid w-full items-center gap-14",
+                        hasScreenshot ? "lg:grid-cols-[1.1fr_0.9fr]" : "max-w-2xl text-center",
+                    ]}
+                >
+                    <section>
+                        <h1
+                            class="text-4xl font-semibold tracking-tight text-balance sm:text-5xl lg:text-6xl"
+                        >
+                            Your notes, <span class="text-brand-600">ready to answer back.</span>
+                        </h1>
+
+                        <p class="text-muted mt-6 text-lg leading-relaxed text-pretty">
+                            {description}
+                        </p>
+
+                        <ul
+                            class:list={[
+                                "mt-8 space-y-3 text-left",
+                                hasScreenshot ? "" : "mx-auto w-fit",
+                            ]}
+                        >
+                            {
+                                points.map((point) => (
+                                    <li class="text-ink flex items-start gap-3">
+                                        <svg
+                                            class="text-brand-500 mt-0.5 size-5 shrink-0"
+                                            viewBox="0 0 20 20"
+                                            fill="currentColor"
+                                            aria-hidden="true"
+                                        >
+                                            <path
+                                                fill-rule="evenodd"
+                                                d="M16.704 4.153a.75.75 0 0 1 .143 1.052l-8 10.5a.75.75 0 0 1-1.127.075l-4.5-4.5a.75.75 0 0 1 1.06-1.06l3.894 3.893 7.48-9.817a.75.75 0 0 1 1.05-.143Z"
+                                                clip-rule="evenodd"
+                                            />
+                                        </svg>
+                                        <span>{point}</span>
+                                    </li>
+                                ))
+                            }
+                        </ul>
+
+                        <div
+                            class:list={[
+                                "mt-10 flex flex-col gap-3",
+                                hasScreenshot ? "items-start" : "items-center",
+                            ]}
+                        >
+                            <a
+                                href={downloadHref}
+                                class="bg-brand-700 shadow-brand-700/20 hover:bg-brand-800 focus-visible:outline-brand-500 inline-flex items-center gap-2.5 rounded-xl px-6 py-3.5 text-base font-semibold text-white shadow-lg transition-colors focus-visible:outline-2 focus-visible:outline-offset-2"
+                            >
+                                <svg
+                                    class="size-5"
+                                    viewBox="0 0 20 20"
+                                    fill="currentColor"
+                                    aria-hidden="true"
+                                >
+                                    <path
+                                        d="M10.75 2.75a.75.75 0 0 0-1.5 0v8.614L6.295 8.235a.75.75 0 1 0-1.09 1.03l4.25 4.5a.75.75 0 0 0 1.09 0l4.25-4.5a.75.75 0 0 0-1.09-1.03l-2.955 3.129V2.75Z"
+                                    ></path>
+                                    <path
+                                        d="M3.5 12.75a.75.75 0 0 0-1.5 0v2.5A2.75 2.75 0 0 0 4.75 18h10.5A2.75 2.75 0 0 0 18 15.25v-2.5a.75.75 0 0 0-1.5 0v2.5c0 .69-.56 1.25-1.25 1.25H4.75c-.69 0-1.25-.56-1.25-1.25v-2.5Z"
+                                    ></path>
+                                </svg>
+                                Download for Android
+                            </a>
+                            <p class="text-subtle text-sm">
+                                Free · Android 7.0 or later · Installs directly as an APK
+                            </p>
+                            <p class="text-subtle max-w-md text-xs leading-relaxed text-balance">
+                                Your phone may ask you to allow installs from your browser the first
+                                time.
+                            </p>
+                        </div>
+                    </section>
+
+                    {
+                        hasScreenshot && (
+                            <div class="flex justify-center lg:justify-end">
+                                <div class="rounded-[2.75rem] bg-slate-900 p-2.5 shadow-2xl ring-1 shadow-slate-900/20 ring-slate-900/10">
+                                    <img
+                                        src="/screenshot.png"
+                                        alt="Cognis on Android: a note open in the editor"
+                                        width="1080"
+                                        height="2340"
+                                        class="w-64 rounded-[2.25rem] sm:w-72"
+                                    />
+                                </div>
+                            </div>
+                        )
+                    }
+                </div>
+            </main>
+
+            <footer
+                class="text-subtle flex flex-col items-center justify-between gap-2 border-t border-slate-200/70 py-6 text-sm sm:flex-row"
+            >
+                <span>© {new Date().getFullYear()} Cognis</span>
+                <a
+                    href="https://github.com/sameerbhagtani/cognis"
+                    class="hover:text-muted transition-colors">Source on GitHub</a
+                >
+            </footer>
+        </div>
     </body>
 </html>
