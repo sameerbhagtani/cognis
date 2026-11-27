@@ -54,7 +54,11 @@ services:
             interval: 5s
             timeout: 5s
             retries: 10
-        # No ports: only the other containers can reach it.
+        # Bound to the server's loopback only, never a public address: nothing
+        # on the internet can reach it, but an SSH tunnel can, for Drizzle
+        # Studio or a desktop client. See deploy/README.md.
+        ports:
+            - "127.0.0.1:5432:5432"
 
     # Runs on every `up`, before anything that touches the database starts.
     # Already-applied migrations are skipped, so this is a no-op most times.

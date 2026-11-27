@@ -50,6 +50,22 @@ docker compose logs -f api           # follow a service's logs
 docker compose exec api node bundle/jobs/purgeTrash.mjs   # purge now
 ```
 
+## Browsing the database
+
+Postgres listens on the server's loopback only, so it's reachable over SSH and nothing else. From your own machine, open a tunnel and leave it running:
+
+```bash
+ssh -N -L 5433:localhost:5432 ubuntu@<server-ip>
+```
+
+Then point Drizzle Studio at it from the repo root, using the values in the server's `deploy/.env`:
+
+```bash
+DATABASE_URL="postgresql://<user>:<password>@localhost:5433/<db>" pnpm --filter @cognis/database dev
+```
+
+Port 5433 locally keeps it clear of a dev database on 5432. Any desktop client with an SSH tunnel option (TablePlus, DBeaver) works the same way. This is production data: take a backup before editing anything.
+
 ## Backups
 
 The database lives in the `cognis-prod_postgres_data` volume, which only exists on this server. Dump it somewhere else regularly:
