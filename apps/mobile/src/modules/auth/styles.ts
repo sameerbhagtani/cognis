@@ -25,19 +25,9 @@ export function createAuthStyles(theme: Theme, isLandscape: boolean) {
             alignItems: "center",
             marginBottom: isLandscape ? 24 : 40,
         },
-        logoBox: {
+        logo: {
             width: isLandscape ? 60 : 76,
             height: isLandscape ? 60 : 76,
-            borderRadius: 20,
-            backgroundColor: theme.secondary,
-            borderWidth: 2,
-            borderColor: theme.primary,
-            alignItems: "center",
-            justifyContent: "center",
-        },
-        logoGlyph: {
-            fontSize: isLandscape ? 28 : 36,
-            color: theme.primary,
         },
         title: {
             fontSize: 28,

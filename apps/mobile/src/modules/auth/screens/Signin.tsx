@@ -9,6 +9,7 @@ import { signInschema, type SignInFormData } from "@/modules/auth/validation";
 import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 
 import { handleSignin } from "../api";
 
@@ -61,9 +62,7 @@ export default function Signin() {
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>Welcome Back</Text>
                         <Text style={styles.subtitle}>Sign in to access your notes</Text>
                     </View>

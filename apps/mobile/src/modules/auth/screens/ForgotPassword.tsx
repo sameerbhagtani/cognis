@@ -9,6 +9,7 @@ import { forgotPasswordSchema, type ForgotPasswordFormData } from "@/modules/aut
 import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 
 import { handleForgotPassword } from "../api";
 
@@ -52,9 +53,7 @@ export default function ForgotPassword() {
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>Reset password</Text>
                         <Text style={styles.subtitle}>
                             Enter your email and we&apos;ll send you a reset link.

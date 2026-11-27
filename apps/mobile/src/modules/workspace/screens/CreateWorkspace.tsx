@@ -10,6 +10,7 @@ import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { useWorkspace } from "@/lib/workspace";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 import { createWorkspace } from "../api";
 import { createWorkspaceSchema, type CreateWorkspaceFormData } from "../validation";
 
@@ -84,9 +85,7 @@ export default function CreateWorkspace({ onboarding = false }: CreateWorkspaceP
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>
                             {onboarding ? "Create your workspace" : "New workspace"}
                         </Text>

@@ -9,6 +9,7 @@ import { signUpschema, type SignUpFormData } from "@/modules/auth/validation";
 import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 
 import { handleSignup } from "../api";
 
@@ -60,9 +61,7 @@ export default function Signup() {
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>Create Account</Text>
                         <Text style={styles.subtitle}>Start organizing your notes with Cognis</Text>
                     </View>

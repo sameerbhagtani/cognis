@@ -5,6 +5,7 @@ import { useLocalSearchParams, useRouter } from "expo-router";
 import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 
 import { handleResendVerification } from "../api";
 
@@ -73,9 +74,7 @@ export default function VerifyEmail() {
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>
                             {error
                                 ? "Link expired"

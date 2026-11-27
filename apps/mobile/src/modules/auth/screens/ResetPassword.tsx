@@ -9,6 +9,7 @@ import { resetPasswordSchema, type ResetPasswordFormData } from "@/modules/auth/
 import { useLayout } from "@/lib/hooks/useLayout";
 import useTheme from "@/lib/theme/useTheme";
 import { createAuthStyles, getFieldBorderColor } from "@/modules/auth/styles";
+import Logo from "@/components/Logo";
 
 import { handleResetPassword } from "../api";
 
@@ -56,9 +57,7 @@ export default function ResetPassword() {
             >
                 <View style={styles.formWrapper}>
                     <View style={styles.brandSection}>
-                        <View style={styles.logoBox}>
-                            <Text style={styles.logoGlyph}>C</Text>
-                        </View>
+                        <Logo style={styles.logo} />
                         <Text style={styles.title}>Set a new password</Text>
                     </View>
 
