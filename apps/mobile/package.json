@@ -10,7 +10,8 @@
         "check-types": "tsc --noEmit",
         "android": "expo start --android",
         "ios": "expo start --ios",
-        "web": "expo start --web"
+        "web": "expo start --web",
+        "eas-build-post-install": "pnpm --filter @cognis/editor-web build"
     },
     "dependencies": {
         "@better-auth/expo": "^1.7.4",
