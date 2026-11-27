@@ -1,0 +1,20 @@
+# Caddy obtains and renews the HTTPS certificates for these names on its own.
+# DNS for each name must point at this server before the first start.
+
+cognis.in {
+	root * /srv/landing
+	encode zstd gzip
+	file_server
+}
+
+www.cognis.in {
+	redir https://cognis.in{uri} permanent
+}
+
+# WebSocket upgrades for Socket.IO pass through reverse_proxy with no extra
+# configuration. Caddy also sets X-Forwarded-For from the real client address,
+# which the API trusts one hop of (TRUST_PROXY_HOPS=1).
+api.cognis.in {
+	encode zstd gzip
+	reverse_proxy api:5000
+}

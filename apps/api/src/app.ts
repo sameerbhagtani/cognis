@@ -15,6 +15,8 @@ import env from "./shared/config/env.js";
 export default function createServerApplication(): Application {
     const app = express();
 
+    app.set("trust proxy", env.TRUST_PROXY_HOPS);
+
     app.use(
         cors({
             origin: env.CLIENT_URL,

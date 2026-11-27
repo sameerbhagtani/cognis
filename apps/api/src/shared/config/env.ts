@@ -5,6 +5,11 @@ const envSchema = z.object({
     NODE_ENV: z.enum(["development", "production"]).default("development"),
     PORT: z.coerce.number().int().positive().default(3000),
 
+    // How many reverse proxies sit in front of the API. 0 locally; 1 behind
+    // Caddy, so req.ip is the client rather than the proxy and per-IP rate
+    // limits don't lump every user into one bucket.
+    TRUST_PROXY_HOPS: z.coerce.number().int().min(0).default(0),
+
     CLIENT_URL: z.url(),
     DATABASE_URL: z.url(),
 

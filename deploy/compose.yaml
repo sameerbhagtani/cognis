@@ -1,0 +1,109 @@
+# Production stack. Run from this directory:
+#
+#   docker compose up -d --build
+#
+# Secrets come from deploy/.env (copy .env.example). Values that aren't secret
+# and only make sense in production are fixed here instead.
+
+name: cognis
+
+x-app-env: &app-env
+    NODE_ENV: production
+    PORT: 5000
+    TRUST_PROXY_HOPS: 1
+    CLIENT_URL: https://cognis.in
+    BETTER_AUTH_URL: https://api.cognis.in
+    DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+    BETTER_AUTH_SECRET: ${BETTER_AUTH_SECRET:?set BETTER_AUTH_SECRET in deploy/.env}
+    OPENAI_API_KEY: ${OPENAI_API_KEY:?set OPENAI_API_KEY in deploy/.env}
+    BREVO_API_KEY: ${BREVO_API_KEY:?set BREVO_API_KEY in deploy/.env}
+    EMAIL_FROM_ADDRESS: ${EMAIL_FROM_ADDRESS:?set EMAIL_FROM_ADDRESS in deploy/.env}
+    EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Cognis}
+    TRASH_RETENTION_DAYS: ${TRASH_RETENTION_DAYS:-30}
+
+x-app: &app
+    image: cognis-api
+    build:
+        context: ..
+        target: api
+    environment: *app-env
+    restart: unless-stopped
+    # Node ignores SIGTERM when it is PID 1, so without an init process every
+    # stop would wait out the 10s timeout and then be killed.
+    init: true
+    depends_on:
+        migrate:
+            condition: service_completed_successfully
+
+services:
+    postgres:
+        image: pgvector/pgvector:pg17
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:?set POSTGRES_USER in deploy/.env}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD in deploy/.env}
+            POSTGRES_DB: ${POSTGRES_DB:?set POSTGRES_DB in deploy/.env}
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+        healthcheck:
+            test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+            interval: 5s
+            timeout: 5s
+            retries: 10
+        # No ports: only the other containers can reach it.
+
+    # Runs on every `up`, before anything that touches the database starts.
+    # Already-applied migrations are skipped, so this is a no-op most times.
+    migrate:
+        build:
+            context: ..
+            target: migrate
+        environment:
+            DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+        restart: "no"
+        depends_on:
+            postgres:
+                condition: service_healthy
+
+    api:
+        <<: *app
+
+    # The durable half of note indexing - see apps/api/src/jobs/embedNotes.ts.
+    worker:
+        <<: *app
+        command: ["node", "dist/jobs/embedNotes.js"]
+
+    # Once a day at 03:00 UTC. A single container, so exactly one purge ever
+    # runs at a time however many API replicas there are.
+    purge:
+        <<: *app
+        command:
+            - sh
+            - -c
+            - |
+                while true; do
+                  sleep $$(( $$(date -ud 'tomorrow 03:00' +%s) - $$(date -u +%s) ))
+                  node dist/jobs/purgeTrash.js
+                done
+
+    web:
+        build:
+            context: ..
+            target: web
+        restart: unless-stopped
+        ports:
+            - "80:80"
+            - "443:443"
+            - "443:443/udp"
+        volumes:
+            # Certificates live here. Losing this volume means re-issuing them,
+            # and Let's Encrypt rate-limits that.
+            - caddy_data:/data
+            - caddy_config:/config
+        depends_on:
+            - api
+
+volumes:
+    postgres_data:
+    caddy_data:
+    caddy_config:

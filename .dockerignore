@@ -1,0 +1,23 @@
+# Rebuilt inside the image
+**/node_modules
+**/dist
+**/.turbo
+**/.astro
+**/.expo
+
+# Secrets never enter the build context
+**/.env*
+
+# Not needed to build anything server-side
+.git
+.husky
+bruno
+docs
+deploy/.env*
+**/*.md
+
+# The mobile app isn't built here, but its package.json has to stay: it's a
+# workspace member, and a frozen install refuses a lockfile that names a
+# project it can't see.
+apps/mobile/*
+!apps/mobile/package.json
